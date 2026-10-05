@@ -87,7 +87,7 @@ public class GameController {
 	 * @return         { results, shipsRemaining, gameStatus, winner }
 	 */
 	@PostMapping("/game/{gameId}/shots")
-	public ResponseEntity<?> receiveShots(@PathVariable String gameId,
+	public ResponseEntity<?> receiveShots(@PathVariable("gameId") String gameId,
 										  @RequestBody ShotRequest request) {
 
 		// ── 1. Lookup session ────────────────────────────────────────────────

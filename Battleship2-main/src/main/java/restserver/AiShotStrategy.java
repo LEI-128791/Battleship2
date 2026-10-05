@@ -32,7 +32,7 @@ public class AiShotStrategy {
 
 		// Build set of all positions already shot by the AI
 		Set<IPosition> alreadyShot = new HashSet<>();
-		for (IMove move : game.getAlienMoves()) {
+		for (IMove move : game.getMyMoves()) {
 			alreadyShot.addAll(move.getShots());
 		}
 
@@ -96,7 +96,7 @@ public class AiShotStrategy {
 
 		// Gather all positions the AI hit
 		List<IPosition> hits = new ArrayList<>();
-		for (IMove move : game.getAlienMoves()) {
+		for (IMove move : game.getMyMoves()) {
 			for (int i = 0; i < move.getShots().size(); i++) {
 				IGame.ShotResult result = move.getShotResults().isEmpty()
 						? null
