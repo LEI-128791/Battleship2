@@ -130,7 +130,7 @@ public class CallbackClient {
 		}
 
 		// Record the move in the game's alien moves list so strategy can inspect it
-		Move move = new Move(game.getAlienMoves().size() + 1, shots, shotResults);
-		game.getAlienMoves().add(move);
+		Move move = new Move(game.getMyMoves().size() + 1, shots, shotResults);
+		game.getMyMoves().add(move);
 	}
 }
