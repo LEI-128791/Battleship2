@@ -52,13 +52,14 @@ public class GameView {
 
     private final Circle[] pips;
     private final Button fireButton = new Button("FIRE");
+    private final Button simulateButton = new Button("SIMULATE");
 
     private final VBox banner = new VBox(10);
     private final Label bannerTitle = new Label();
     private final Label bannerSubtitle = new Label();
 
     public GameView(BoardView player, BoardView enemy, int shotsPerTurn,
-                    Runnable onNewGame, Runnable onFire) {
+                    Runnable onNewGame, Runnable onFire, Runnable onSimulate) {
 
         pips = new Circle[shotsPerTurn];
 
@@ -73,7 +74,7 @@ public class GameView {
         boards.setAlignment(Pos.CENTER);
         content.setCenter(boards);
 
-        content.setBottom(bottom(onFire));
+        content.setBottom(bottom(onFire, onSimulate));
 
         buildBanner(onNewGame);
         root.getChildren().addAll(content, banner);
@@ -104,6 +105,15 @@ public class GameView {
         fireButton.setDisable(!enabled);
     }
 
+    public void setSimulateEnabled(boolean enabled) {
+        simulateButton.setDisable(!enabled);
+    }
+
+    /** Durante a simulação o botão passa a STOP. */
+    public void setSimulateRunning(boolean running) {
+        simulateButton.setText(running ? "STOP" : "SIMULATE");
+    }
+
     public void setSelected(int count) {
         for (int i = 0; i < pips.length; i++) {
             pips[i].setFill(i < count ? GOLD : Color.TRANSPARENT);
@@ -125,10 +135,16 @@ public class GameView {
     }
 
     public void showBanner(boolean victory) {
-        bannerTitle.setText(victory ? "VICTORY" : "DEFEAT");
-        bannerTitle.getStyleClass().setAll("banner-title", victory ? "banner-win" : "banner-lose");
-        bannerSubtitle.setText(victory ? "All enemy ships have been sunk."
-                : "Your fleet has been destroyed.");
+        showBanner(victory ? "VICTORY" : "DEFEAT",
+                victory ? "All enemy ships have been sunk." : "Your fleet has been destroyed.",
+                victory ? "banner-win" : "banner-lose");
+    }
+
+    /** @param styleClass banner-win (dourado), banner-lose (vermelho) ou banner-neutral (azul) */
+    public void showBanner(String title, String subtitle, String styleClass) {
+        bannerTitle.setText(title);
+        bannerTitle.getStyleClass().setAll("banner-title", styleClass);
+        bannerSubtitle.setText(subtitle);
         banner.setOpacity(0);
         banner.setVisible(true);
         FadeTransition fade = new FadeTransition(Duration.millis(600), banner);
@@ -187,7 +203,7 @@ public class GameView {
         return panel;
     }
 
-    private Node bottom(Runnable onFire) {
+    private Node bottom(Runnable onFire, Runnable onSimulate) {
         statusText.getStyleClass().add("status-text");
         statusBar.setAlignment(Pos.CENTER_LEFT);
         statusBar.setMinHeight(42);
@@ -209,7 +225,10 @@ public class GameView {
         fireButton.setDisable(true);
         fireButton.setOnAction(e -> onFire.run());
 
-        HBox fireBox = new HBox(14, pipBox, fireButton);
+        simulateButton.getStyleClass().add("secondary-button");
+        simulateButton.setOnAction(e -> onSimulate.run());
+
+        HBox fireBox = new HBox(10, pipBox, fireButton, simulateButton);
         fireBox.setAlignment(Pos.CENTER);
 
         Region left = new Region();

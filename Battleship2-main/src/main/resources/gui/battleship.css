@@ -94,4 +94,5 @@
 .banner-title { -fx-font-size: 44px; -fx-font-weight: bold; }
 .banner-win  { -fx-text-fill: #FFD54A; }
 .banner-lose { -fx-text-fill: #FF5252; }
+.banner-neutral { -fx-text-fill: #4FC3F7; }
 .banner-subtitle { -fx-text-fill: #CFE8F7; -fx-font-size: 15px; }

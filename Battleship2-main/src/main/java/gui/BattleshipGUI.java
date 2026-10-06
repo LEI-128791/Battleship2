@@ -3,16 +3,22 @@ package gui;
 import battleship.Fleet;
 import battleship.Game;
 import battleship.IFleet;
+import battleship.IGame;
+import battleship.IMove;
 import battleship.IPosition;
 import battleship.IShip;
 import battleship.Position;
 
 import gui.GameView.Tone;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.net.URL;
@@ -30,11 +36,14 @@ public class BattleshipGUI extends Application {
 
     private static final int SHOTS_PER_TURN = 3;
     private static final int ENEMY_SHIPS = 11;
+    /** Pausa entre rajadas na simulação (a consola usa 3000 ms). */
+    private static final int SIMULATION_DELAY_MS = Integer.getInteger("battleship.sim.delay", 1200);
 
     private final GameClient client = new GameClient();
     private final List<IPosition> selectedShots = new ArrayList<>();
 
     private IFleet playerFleet;
+    private Game playerGame;
     private int playerShips;
     private CallbackServer callbackServer;
 
@@ -53,6 +62,10 @@ public class BattleshipGUI extends Application {
     private boolean waiting;    // há um pedido ao servidor em curso
     private boolean gameOver;
 
+    // Simulação local (comando "simula" da consola): null quando parada.
+    private Timeline simulation;
+    private int simulatedSalvos;
+
     // Muda a cada jogo novo: respostas atrasadas de um jogo antigo são ignoradas.
     private int generation;
 
@@ -62,7 +75,7 @@ public class BattleshipGUI extends Application {
     public void start(Stage stage) {
         playerBoard = new BoardView(null);
         enemyBoard = new BoardView(this::onEnemyCellClicked);
-        view = new GameView(playerBoard, enemyBoard, SHOTS_PER_TURN, this::newGame, this::fire);
+        view = new GameView(playerBoard, enemyBoard, SHOTS_PER_TURN, this::newGame, this::fire, this::simulate);
 
         Scene scene = new Scene(view.getRoot());
         URL css = getClass().getResource("battleship.css");
@@ -78,13 +91,14 @@ public class BattleshipGUI extends Application {
         stage.setMinWidth(stage.getWidth());
         stage.setMinHeight(stage.getHeight());
 
-        newGame();
+        newGame(); // liga-se ao servidor logo no arranque
     }
 
     // ---------------------------------------------------------------- Novo jogo
 
     private void resetLocalGame() {
         generation++;
+        stopSimulation();
 
         if (callbackServer != null) {
             callbackServer.stop();
@@ -92,7 +106,8 @@ public class BattleshipGUI extends Application {
 
         playerFleet = Fleet.createRandom();
         playerShips = playerFleet.getShips().size();
-        callbackServer = new CallbackServer(new Game(playerFleet), this::showAiShot, this::showDefeat);
+        playerGame = new Game(playerFleet);
+        callbackServer = new CallbackServer(playerGame, this::showAiShot, this::showDefeat);
 
         try {
             callbackServer.start();
@@ -148,6 +163,10 @@ public class BattleshipGUI extends Application {
 
     private void onEnemyCellClicked(int row, int column) {
         if (gameOver) {
+            return;
+        }
+        if (simulation != null) {
+            warn("Simulation running. Press STOP or NEW GAME.");
             return;
         }
         if (!registered) {
@@ -383,12 +402,106 @@ public class BattleshipGUI extends Application {
         return cells;
     }
 
+    // ---------------------------------------------------------------- Simulação
+
+    /**
+     * Igual ao "simula" do Main/Tasks: um inimigo aleatório dispara rajadas de 3 tiros contra a
+     * MINHA frota (Game.randomEnemyFire) até afundar tudo. Corre só localmente, sem servidor.
+     * Carregar outra vez no botão (STOP) pára a simulação.
+     */
+    private void simulate() {
+        if (simulation != null) {
+            stopSimulation();
+            info("Simulation stopped.");
+            return;
+        }
+
+        resetLocalGame(); // frota nova, tabuleiros limpos, sem ligação ao servidor
+        simulatedSalvos = 0;
+        view.setSimulateRunning(true);
+        info("SIMULATION: random enemy fire against your fleet...");
+
+        simulation = new Timeline(new KeyFrame(Duration.millis(SIMULATION_DELAY_MS), e -> simulationStep()));
+        simulation.setCycleCount(Animation.INDEFINITE);
+        simulation.play();
+    }
+
+    private void simulationStep() {
+        if (playerGame.getRemainingShips() == 0) {
+            finishSimulation();
+            return;
+        }
+
+        playerGame.randomEnemyFire(); // aplica 3 tiros aleatórios à frota (como na consola)
+        simulatedSalvos++;
+
+        // O Game guardou a jogada: lemos dela o que aconteceu a cada tiro.
+        List<IMove> moves = playerGame.getAlienMoves();
+        IMove move = moves.get(moves.size() - 1);
+
+        int hitCount = 0;
+        int missCount = 0;
+        String sunkName = null;
+
+        for (int i = 0; i < move.getShots().size() && i < move.getShotResults().size(); i++) {
+            IPosition shot = move.getShots().get(i);
+            IGame.ShotResult result = move.getShotResults().get(i);
+            Outcome outcome = Outcome.of(result);
+
+            if (!outcome.isShotOnBoard()) {
+                continue; // repetido / inválido
+            }
+            shots++;
+            if (outcome == Outcome.MISS) {
+                missCount++;
+            } else {
+                hits++;
+                hitCount++;
+            }
+            if (outcome == Outcome.SUNK) {
+                sunkName = result.ship().getCategory();
+            }
+            showAiShot(new CallbackServer.ShotUpdate(shot.getRow(), shot.getColumn(), outcome));
+        }
+
+        String summary = "Salvo " + simulatedSalvos + ": " + hitCount + (hitCount == 1 ? " hit, " : " hits, ")
+                + missCount + (missCount == 1 ? " miss" : " misses");
+        if (sunkName != null) {
+            summary = "Salvo " + simulatedSalvos + ": your " + sunkName + " sunk! (" + hitCount
+                    + (hitCount == 1 ? " hit, " : " hits, ") + missCount + (missCount == 1 ? " miss)" : " misses)");
+        }
+        info(summary);
+
+        if (playerGame.getRemainingShips() == 0) {
+            finishSimulation();
+        }
+    }
+
+    private void finishSimulation() {
+        stopSimulation();
+        gameOver = true;
+        updateControls();
+        view.setStatus("Simulation complete: fleet destroyed in " + simulatedSalvos + " salvos.", Tone.INFO);
+        view.showBanner("SIMULATION COMPLETE", "Fleet destroyed in " + simulatedSalvos + " salvos.", "banner-neutral");
+    }
+
+    private void stopSimulation() {
+        if (simulation != null) {
+            simulation.stop();
+            simulation = null;
+        }
+        if (view != null) {
+            view.setSimulateRunning(false);
+        }
+    }
+
     private boolean canFire() {
         return registered && !waiting && !gameOver && selectedShots.size() == SHOTS_PER_TURN;
     }
 
     private void updateControls() {
         view.setFireEnabled(canFire());
+        view.setSimulateEnabled(!waiting);
         view.setSelected(selectedShots.size());
     }
 
