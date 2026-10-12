@@ -6,6 +6,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+import java.nio.file.Path;
+
 /**
  * The type Tasks.
  */
@@ -32,6 +35,7 @@ public class Tasks {
 	private static final String MAPA = "mapa";
 	private static final String STATUS = "estado";
 	private static final String SIMULA = "simula";
+	private static final String EXPORTAR_PDF = "exportapdf";
 
 	/**
 	 * This task also tests the fighting element of a round of three shots
@@ -40,6 +44,7 @@ public class Tasks {
 
 		IFleet myFleet = null;
 		IGame game = null;
+		boolean gameFinished = false;
 		menuHelp();
 
 		System.out.print("> ");
@@ -67,19 +72,23 @@ public class Tasks {
 						game.printMyBoard(false, true);
 					break;
 				case RAJADA:
-					if (game != null) {
+					if (game != null && !gameFinished) {
 						game.readEnemyFire(in);
 						myFleet.printStatus();
 						game.printMyBoard(true, false);
 
 						if (game.getRemainingShips() == 0) {
 							game.over();
-							System.exit(0);
+							gameFinished = true;
 						}
+					}
+					else if (gameFinished) {
+						System.out.println(
+								"O jogo terminou. Crie uma nova frota para jogar novamente.");
 					}
 					break;
 				case SIMULA:
-					if (game != null) {
+					if (game != null && !gameFinished) {
 						while (game.getRemainingShips() > 0){
 							game.randomEnemyFire();
 							myFleet.printStatus();
@@ -93,8 +102,12 @@ public class Tasks {
 
 						if (game.getRemainingShips() == 0) {
 							game.over();
-							System.exit(0);
+							gameFinished = true;
 						}
+					}
+					else if (gameFinished) {
+						System.out.println(
+								"O jogo terminou. Crie uma nova frota para jogar novamente.");
 					}
 					break;
 				case TIROS:
@@ -104,6 +117,28 @@ public class Tasks {
                 case AJUDA:
                     menuHelp();
                     break;
+				case EXPORTAR_PDF: {
+					if (game == null) {
+						System.out.println("Crie uma frota primeiro.");
+						break;
+					}
+
+					Path outputPath = Path.of("battleship-history.pdf");
+
+					try {
+						Path actualPath = PdfReportExporter.export(
+								game.getAlienMoves(), outputPath);
+
+						System.out.println(
+								"Historico exportado para: "
+										+ actualPath.toAbsolutePath());
+					} catch (IOException e) {
+						LOGGER.error("Falha ao exportar o historico para PDF", e);
+						System.out.println(
+								"Erro ao exportar PDF: " + e.getMessage());
+					}
+					break;
+				}
 				default:
 					System.out.println("Que comando é esse??? Repete ...");
 			}
@@ -127,6 +162,7 @@ public class Tasks {
 		System.out.println("- " + SIMULA + ": Simula um jogo completo.");
 		System.out.println("- " + TIROS + ": Lista os tiros válidos realizados (* = tiro em navio, o = tiro na água)");
 		System.out.println("- " + DESISTIR + ": Encerra o jogo.");
+		System.out.println("- " + EXPORTAR_PDF + ": Exporta o historico de jogadas para PDF.");
 		System.out.println("===============================================================");
 	}
 	/**

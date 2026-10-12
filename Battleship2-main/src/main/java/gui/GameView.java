@@ -53,13 +53,15 @@ public class GameView {
     private final Circle[] pips;
     private final Button fireButton = new Button("FIRE");
     private final Button simulateButton = new Button("SIMULATE");
+    private final Button exportButton = new Button("EXPORT PDF");
 
     private final VBox banner = new VBox(10);
     private final Label bannerTitle = new Label();
     private final Label bannerSubtitle = new Label();
 
     public GameView(BoardView player, BoardView enemy, int shotsPerTurn,
-                    Runnable onNewGame, Runnable onFire, Runnable onSimulate) {
+                    Runnable onNewGame, Runnable onFire,
+                    Runnable onSimulate, Runnable onExportPdf) {
 
         pips = new Circle[shotsPerTurn];
 
@@ -74,7 +76,7 @@ public class GameView {
         boards.setAlignment(Pos.CENTER);
         content.setCenter(boards);
 
-        content.setBottom(bottom(onFire, onSimulate));
+        content.setBottom(bottom(onFire, onSimulate, onExportPdf));
 
         buildBanner(onNewGame);
         root.getChildren().addAll(content, banner);
@@ -107,6 +109,10 @@ public class GameView {
 
     public void setSimulateEnabled(boolean enabled) {
         simulateButton.setDisable(!enabled);
+    }
+
+    public void setExportEnabled(boolean enabled) {
+        exportButton.setDisable(!enabled);
     }
 
     /** Durante a simulação o botão passa a STOP. */
@@ -203,7 +209,8 @@ public class GameView {
         return panel;
     }
 
-    private Node bottom(Runnable onFire, Runnable onSimulate) {
+    private Node bottom(Runnable onFire, Runnable onSimulate,
+                        Runnable onExportPdf) {
         statusText.getStyleClass().add("status-text");
         statusBar.setAlignment(Pos.CENTER_LEFT);
         statusBar.setMinHeight(42);
@@ -228,7 +235,12 @@ public class GameView {
         simulateButton.getStyleClass().add("secondary-button");
         simulateButton.setOnAction(e -> onSimulate.run());
 
-        HBox fireBox = new HBox(10, pipBox, fireButton, simulateButton);
+        exportButton.getStyleClass().add("secondary-button");
+        exportButton.setDisable(true);
+        exportButton.setOnAction(e -> onExportPdf.run());
+
+        HBox fireBox = new HBox(
+                10, pipBox, fireButton, simulateButton, exportButton);
         fireBox.setAlignment(Pos.CENTER);
 
         Region left = new Region();

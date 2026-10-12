@@ -75,6 +75,8 @@
 
 		<jetbrains.annotations.version>26.1.0</jetbrains.annotations.version>
 		<javafx.version>21.0.8</javafx.version>
+
+		<pdfbox.version>3.0.8</pdfbox.version>
 	</properties>
 
 	<dependencies>
@@ -145,6 +147,15 @@
 			<artifactId>javafx-graphics</artifactId>
 			<version>${javafx.version}</version>
 		</dependency>
+
+		<!-- Dependency for pdf export of games -->
+
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>${pdfbox.version}</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

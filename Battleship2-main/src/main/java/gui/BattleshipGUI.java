@@ -8,6 +8,7 @@ import battleship.IMove;
 import battleship.IPosition;
 import battleship.IShip;
 import battleship.Position;
+import battleship.PdfReportExporter;
 
 import gui.GameView.Tone;
 
@@ -19,6 +20,7 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.stage.FileChooser;
 
 import java.io.IOException;
 import java.net.URL;
@@ -27,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CompletionException;
+import java.io.File;
+import java.nio.file.Path;
 
 /**
  * Controlador da aplicação: liga o servidor (jogador -> AI), o Game existente (AI -> jogador)
@@ -69,13 +73,20 @@ public class BattleshipGUI extends Application {
     // Muda a cada jogo novo: respostas atrasadas de um jogo antigo são ignoradas.
     private int generation;
 
+    private Stage primaryStage;
+
+    private final List<PdfReportExporter.MoveReport> playerMoveHistory =
+            new ArrayList<>();
+
     // ---------------------------------------------------------------- Arranque
 
     @Override
     public void start(Stage stage) {
         playerBoard = new BoardView(null);
         enemyBoard = new BoardView(this::onEnemyCellClicked);
-        view = new GameView(playerBoard, enemyBoard, SHOTS_PER_TURN, this::newGame, this::fire, this::simulate);
+        this.primaryStage = stage;
+        view = new GameView(playerBoard, enemyBoard, SHOTS_PER_TURN,
+                this::newGame, this::fire, this::simulate, this::exportPdf);
 
         Scene scene = new Scene(view.getRoot());
         URL css = getClass().getResource("battleship.css");
@@ -126,6 +137,7 @@ public class BattleshipGUI extends Application {
 
         playerBoard.reset();
         enemyBoard.reset();
+        playerMoveHistory.clear();
         enemyShipTypes = new String[BoardView.SIZE][BoardView.SIZE];
         for (IShip ship : playerFleet.getShips()) {
             playerBoard.addShip(cellsOf(ship), false);
@@ -158,6 +170,39 @@ public class BattleshipGUI extends Application {
                     updateControls();
                 }));
     }
+
+    // ---------------------------------------------------------------- Exportar PDF
+
+    private void exportPdf() {
+        if (playerMoveHistory.isEmpty()) {
+            warn("Ainda nao existem jogadas para exportar.");
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Export game history to PDF");
+        chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter(
+                        "PDF files (*.pdf)", "*.pdf"));
+        chooser.setInitialFileName("battleship-history.pdf");
+
+        File selectedFile = chooser.showSaveDialog(primaryStage);
+
+        if (selectedFile == null) {
+            return;
+        }
+
+        try {
+            Path actualPath = PdfReportExporter.exportHistory(
+                    playerMoveHistory, selectedFile.toPath());
+
+            info("History exported to: "
+                    + actualPath.toAbsolutePath());
+        } catch (IOException e) {
+            error("PDF export failed: " + e.getMessage());
+        }
+    }
+
 
     // ---------------------------------------------------------------- Seleção e tiro
 
@@ -242,6 +287,7 @@ public class BattleshipGUI extends Application {
             }
             return;
         }
+        recordPlayerTurn(sent, turn.results());
 
         int hitCount = 0;
         int missCount = 0;
@@ -318,6 +364,52 @@ public class BattleshipGUI extends Application {
             info(next);
         }
     }
+
+
+    private void recordPlayerTurn(
+            List<IPosition> sent,
+            List<GameClient.ShotResult> results) {
+
+        List<PdfReportExporter.ShotReport> reportShots =
+                new ArrayList<>();
+
+        for (int i = 0; i < sent.size(); i++) {
+            IPosition position = sent.get(i);
+
+            String coordinate = ""
+                    + position.getClassicRow()
+                    + position.getClassicColumn();
+
+            String outcome = i < results.size()
+                    ? describeShotResult(results.get(i))
+                    : "Resultado nao disponivel";
+
+            reportShots.add(
+                    new PdfReportExporter.ShotReport(coordinate, outcome));
+        }
+
+        int moveNumber = playerMoveHistory.size() + 1;
+
+        playerMoveHistory.add(
+                new PdfReportExporter.MoveReport(moveNumber, reportShots));
+    }
+
+    private String describeShotResult(GameClient.ShotResult result) {
+        String shipType = result.shipType();
+
+        return switch (result.outcome()) {
+            case INVALID -> "Tiro invalido";
+            case REPEATED -> "Tiro repetido";
+            case MISS -> "Agua";
+            case HIT -> shipType == null || shipType.isBlank()
+                    ? "Navio atingido"
+                    : "Navio atingido (" + shipType + ")";
+            case SUNK -> shipType == null || shipType.isBlank()
+                    ? "Navio afundado"
+                    : "Navio afundado (" + shipType + ")";
+        };
+    }
+
 
     /** Revela o navio inimigo afundado: todas as células acertadas do mesmo tipo ligadas à última. */
     private void sinkEnemyShip(int row, int column, String type) {
@@ -503,6 +595,7 @@ public class BattleshipGUI extends Application {
         view.setFireEnabled(canFire());
         view.setSimulateEnabled(!waiting);
         view.setSelected(selectedShots.size());
+        view.setExportEnabled(!playerMoveHistory.isEmpty());
     }
 
     private void updateStats() {

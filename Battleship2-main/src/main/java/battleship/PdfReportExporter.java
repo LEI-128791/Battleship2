@@ -1,0 +1,249 @@
+
+package battleship;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.nio.file.FileAlreadyExistsException;
+
+public final class PdfReportExporter {
+
+    public record ShotReport(String coordinate, String outcome) {
+        public ShotReport {
+            Objects.requireNonNull(coordinate);
+            Objects.requireNonNull(outcome);
+        }
+    }
+
+    public record MoveReport(int number, List<ShotReport> shots) {
+        public MoveReport {
+            shots = List.copyOf(shots);
+        }
+    }
+
+    private static final float LEFT_MARGIN = 50;
+    private static final float FIRST_LINE_Y = 790;
+    private static final float LINE_HEIGHT = 15;
+    private static final int LINES_PER_PAGE = 45;
+
+    private PdfReportExporter() {
+    }
+
+    public static Path export(List<IMove> moves, Path outputPath)
+            throws IOException {
+
+        Objects.requireNonNull(moves, "moves cannot be null");
+
+        List<MoveReport> reports = new ArrayList<>();
+
+        for (IMove move : moves) {
+            List<ShotReport> shots = new ArrayList<>();
+            List<IPosition> positions = move.getShots();
+            List<IGame.ShotResult> results = move.getShotResults();
+
+            for (int i = 0; i < positions.size(); i++) {
+                IPosition position = positions.get(i);
+
+                String outcome = i < results.size()
+                        ? describeResult(results.get(i))
+                        : "Resultado nao disponivel";
+
+                String coordinate = ""
+                        + position.getClassicRow()
+                        + position.getClassicColumn();
+
+                shots.add(new ShotReport(coordinate, outcome));
+            }
+
+            reports.add(new MoveReport(move.getNumber(), shots));
+        }
+
+        return exportHistory(reports, outputPath);
+    }
+
+    private static Path reserveAvailablePath(Path requestedPath)
+            throws IOException {
+
+        Path parent = requestedPath.getParent();
+        String fileName = requestedPath.getFileName().toString();
+
+        int extensionIndex = fileName.lastIndexOf('.');
+        String baseName = extensionIndex > 0
+                ? fileName.substring(0, extensionIndex)
+                : fileName;
+        String extension = extensionIndex > 0
+                ? fileName.substring(extensionIndex)
+                : "";
+
+        int suffix = 0;
+
+        while (true) {
+            String candidateName = suffix == 0
+                    ? fileName
+                    : baseName + "-" + suffix + extension;
+
+            Path candidate = parent.resolve(candidateName);
+
+            try {
+                return Files.createFile(candidate);
+            } catch (FileAlreadyExistsException e) {
+                suffix++;
+            }
+        }
+    }
+
+    public static Path exportHistory(
+            List<MoveReport> moves, Path outputPath) throws IOException {
+
+        Objects.requireNonNull(moves, "moves cannot be null");
+        Objects.requireNonNull(outputPath, "outputPath cannot be null");
+
+        Path absolutePath = outputPath.toAbsolutePath();
+        Path parent = absolutePath.getParent();
+
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+
+        List<ReportLine> lines = new ArrayList<>();
+
+        if (moves.isEmpty()) {
+            lines.add(new ReportLine(
+                    "Nao existem jogadas registadas.", false));
+        } else {
+            for (MoveReport move : moves) {
+                lines.add(new ReportLine(
+                        "Jogada " + move.number(), true));
+
+                for (ShotReport shot : move.shots()) {
+                    lines.add(new ReportLine(
+                            "Tiro " + shot.coordinate()
+                                    + ": " + shot.outcome(),
+                            false));
+                }
+
+                lines.add(new ReportLine("", false));
+            }
+        }
+
+        PDFont regularFont = new PDType1Font(
+                Standard14Fonts.FontName.HELVETICA);
+        PDFont boldFont = new PDType1Font(
+                Standard14Fonts.FontName.HELVETICA_BOLD);
+
+        try (PDDocument document = new PDDocument()) {
+            int pageCount = Math.max(1,
+                    (int) Math.ceil(
+                            (double) lines.size() / LINES_PER_PAGE));
+
+            for (int pageIndex = 0;
+                 pageIndex < pageCount;
+                 pageIndex++) {
+
+                PDPage page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+
+                try (PDPageContentStream content =
+                             new PDPageContentStream(document, page)) {
+
+                    float y = FIRST_LINE_Y;
+
+                    writeLine(content,
+                            "Historico de jogadas - Batalha Naval",
+                            boldFont, 16, y);
+
+                    y -= 30;
+
+                    if (pageIndex > 0) {
+                        writeLine(content, "Continuacao",
+                                boldFont, 12, y);
+                        y -= LINE_HEIGHT * 2;
+                    }
+
+                    int start = pageIndex * LINES_PER_PAGE;
+                    int end = Math.min(
+                            start + LINES_PER_PAGE, lines.size());
+
+                    for (int i = start; i < end; i++) {
+                        ReportLine line = lines.get(i);
+
+                        if (!line.text().isEmpty()) {
+                            PDFont font = line.heading()
+                                    ? boldFont : regularFont;
+
+                            writeLine(content, line.text(),
+                                    font, 11, y);
+                        }
+
+                        y -= LINE_HEIGHT;
+                    }
+                }
+            }
+
+            Path actualPath = reserveAvailablePath(absolutePath);
+
+            try {
+                document.save(actualPath.toFile());
+                return actualPath;
+            } catch (IOException | RuntimeException e) {
+                try {
+                    Files.deleteIfExists(actualPath);
+                } catch (IOException cleanupException) {
+                    e.addSuppressed(cleanupException);
+                }
+
+                throw e;
+            }
+        }
+    }
+
+    private static String describeResult(IGame.ShotResult result) {
+        if (!result.valid()) {
+            return "Tiro invalido";
+        }
+
+        if (result.repeated()) {
+            return "Tiro repetido";
+        }
+
+        if (result.ship() == null) {
+            return "Agua";
+        }
+
+        if (result.sunk()) {
+            return "Navio afundado ("
+                    + result.ship().getCategory() + ")";
+        }
+
+        return "Navio atingido ("
+                + result.ship().getCategory() + ")";
+    }
+
+    private static void writeLine(
+            PDPageContentStream content,
+            String text,
+            PDFont font,
+            float fontSize,
+            float y) throws IOException {
+
+        content.beginText();
+        content.setFont(font, fontSize);
+        content.newLineAtOffset(LEFT_MARGIN, y);
+        content.showText(text);
+        content.endText();
+    }
+
+    private record ReportLine(String text, boolean heading) {
+    }
+}
