@@ -126,10 +126,12 @@ public class Tasks {
 					Path outputPath = Path.of("battleship-history.pdf");
 
 					try {
-						PdfReportExporter.export(game.getAlienMoves(), outputPath);
+						Path actualPath = PdfReportExporter.export(
+								game.getAlienMoves(), outputPath);
+
 						System.out.println(
 								"Historico exportado para: "
-										+ outputPath.toAbsolutePath());
+										+ actualPath.toAbsolutePath());
 					} catch (IOException e) {
 						LOGGER.error("Falha ao exportar o historico para PDF", e);
 						System.out.println(

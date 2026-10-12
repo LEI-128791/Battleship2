@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.nio.file.FileAlreadyExistsException;
 
 public final class PdfReportExporter {
 
@@ -39,7 +40,7 @@ public final class PdfReportExporter {
     private PdfReportExporter() {
     }
 
-    public static void export(List<IMove> moves, Path outputPath)
+    public static Path export(List<IMove> moves, Path outputPath)
             throws IOException {
 
         Objects.requireNonNull(moves, "moves cannot be null");
@@ -68,10 +69,41 @@ public final class PdfReportExporter {
             reports.add(new MoveReport(move.getNumber(), shots));
         }
 
-        exportHistory(reports, outputPath);
+        return exportHistory(reports, outputPath);
     }
 
-    public static void exportHistory(
+    private static Path reserveAvailablePath(Path requestedPath)
+            throws IOException {
+
+        Path parent = requestedPath.getParent();
+        String fileName = requestedPath.getFileName().toString();
+
+        int extensionIndex = fileName.lastIndexOf('.');
+        String baseName = extensionIndex > 0
+                ? fileName.substring(0, extensionIndex)
+                : fileName;
+        String extension = extensionIndex > 0
+                ? fileName.substring(extensionIndex)
+                : "";
+
+        int suffix = 0;
+
+        while (true) {
+            String candidateName = suffix == 0
+                    ? fileName
+                    : baseName + "-" + suffix + extension;
+
+            Path candidate = parent.resolve(candidateName);
+
+            try {
+                return Files.createFile(candidate);
+            } catch (FileAlreadyExistsException e) {
+                suffix++;
+            }
+        }
+    }
+
+    public static Path exportHistory(
             List<MoveReport> moves, Path outputPath) throws IOException {
 
         Objects.requireNonNull(moves, "moves cannot be null");
@@ -159,7 +191,20 @@ public final class PdfReportExporter {
                 }
             }
 
-            document.save(absolutePath.toFile());
+            Path actualPath = reserveAvailablePath(absolutePath);
+
+            try {
+                document.save(actualPath.toFile());
+                return actualPath;
+            } catch (IOException | RuntimeException e) {
+                try {
+                    Files.deleteIfExists(actualPath);
+                } catch (IOException cleanupException) {
+                    e.addSuppressed(cleanupException);
+                }
+
+                throw e;
+            }
         }
     }
 
