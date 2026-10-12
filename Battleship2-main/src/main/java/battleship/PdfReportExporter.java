@@ -18,6 +18,19 @@ import java.util.Objects;
 
 public final class PdfReportExporter {
 
+    public record ShotReport(String coordinate, String outcome) {
+        public ShotReport {
+            Objects.requireNonNull(coordinate);
+            Objects.requireNonNull(outcome);
+        }
+    }
+
+    public record MoveReport(int number, List<ShotReport> shots) {
+        public MoveReport {
+            shots = List.copyOf(shots);
+        }
+    }
+
     private static final float LEFT_MARGIN = 50;
     private static final float FIRST_LINE_Y = 790;
     private static final float LINE_HEIGHT = 15;
@@ -28,6 +41,38 @@ public final class PdfReportExporter {
 
     public static void export(List<IMove> moves, Path outputPath)
             throws IOException {
+
+        Objects.requireNonNull(moves, "moves cannot be null");
+
+        List<MoveReport> reports = new ArrayList<>();
+
+        for (IMove move : moves) {
+            List<ShotReport> shots = new ArrayList<>();
+            List<IPosition> positions = move.getShots();
+            List<IGame.ShotResult> results = move.getShotResults();
+
+            for (int i = 0; i < positions.size(); i++) {
+                IPosition position = positions.get(i);
+
+                String outcome = i < results.size()
+                        ? describeResult(results.get(i))
+                        : "Resultado nao disponivel";
+
+                String coordinate = ""
+                        + position.getClassicRow()
+                        + position.getClassicColumn();
+
+                shots.add(new ShotReport(coordinate, outcome));
+            }
+
+            reports.add(new MoveReport(move.getNumber(), shots));
+        }
+
+        exportHistory(reports, outputPath);
+    }
+
+    public static void exportHistory(
+            List<MoveReport> moves, Path outputPath) throws IOException {
 
         Objects.requireNonNull(moves, "moves cannot be null");
         Objects.requireNonNull(outputPath, "outputPath cannot be null");
@@ -45,27 +90,15 @@ public final class PdfReportExporter {
             lines.add(new ReportLine(
                     "Nao existem jogadas registadas.", false));
         } else {
-            for (IMove move : moves) {
+            for (MoveReport move : moves) {
                 lines.add(new ReportLine(
-                        "Jogada " + move.getNumber(), true));
+                        "Jogada " + move.number(), true));
 
-                List<IPosition> shots = move.getShots();
-                List<IGame.ShotResult> results =
-                        move.getShotResults();
-
-                for (int i = 0; i < shots.size(); i++) {
-                    IPosition shot = shots.get(i);
-
-                    String outcome = i < results.size()
-                            ? describeResult(results.get(i))
-                            : "Resultado nao disponivel";
-
-                    String text = "Tiro "
-                            + shot.getClassicRow()
-                            + shot.getClassicColumn()
-                            + ": " + outcome;
-
-                    lines.add(new ReportLine(text, false));
+                for (ShotReport shot : move.shots()) {
+                    lines.add(new ReportLine(
+                            "Tiro " + shot.coordinate()
+                                    + ": " + shot.outcome(),
+                            false));
                 }
 
                 lines.add(new ReportLine("", false));
