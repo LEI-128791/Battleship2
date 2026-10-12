@@ -46,6 +46,8 @@ public class GameView {
     private final Label shotsValue = new Label("0");
     private final Label hitsValue = new Label("0");
     private final Label accuracyValue = new Label("0%");
+    private final Label timerValue = new Label("00:00");
+    private final Label lastMoveTimeValue = new Label("--");
 
     private final Label playerAfloat = new Label();
     private final Label enemyAfloat = new Label();
@@ -132,6 +134,21 @@ public class GameView {
         accuracyValue.setText(shots == 0 ? "0%" : Math.round(100.0 * hits / shots) + "%");
     }
 
+    public void setTimer(long seconds) {
+        long minutes = seconds / 60;
+        long remainingSeconds = seconds % 60;
+
+        timerValue.setText(
+                String.format("%02d:%02d", minutes, remainingSeconds)
+        );
+    }
+
+    public void setLastMoveTime(double seconds) {
+        lastMoveTimeValue.setText(
+                String.format("%.2f s", seconds)
+        );
+    }
+
     public void setPlayerAfloat(int afloat, int total) {
         playerAfloat.setText("AFLOAT " + afloat + "/" + total);
     }
@@ -216,7 +233,7 @@ public class GameView {
         statusBar.setMinHeight(42);
 
         HBox stats = new HBox(22,
-                stat("SHOTS", shotsValue), stat("HITS", hitsValue), stat("ACCURACY", accuracyValue));
+                stat("SHOTS", shotsValue), stat("HITS", hitsValue), stat("ACCURACY", accuracyValue),stat("TURN TIME", timerValue), stat("LAST TURN", lastMoveTimeValue));
         stats.setAlignment(Pos.CENTER_LEFT);
 
         HBox pipBox = new HBox(6);

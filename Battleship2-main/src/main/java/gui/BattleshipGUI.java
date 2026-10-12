@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.concurrent.CompletionException;
 import java.io.File;
 import java.nio.file.Path;
+import org.apache.commons.lang3.time.StopWatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Controlador da aplicação: liga o servidor (jogador -> AI), o Game existente (AI -> jogador)
@@ -70,6 +72,16 @@ public class BattleshipGUI extends Application {
     private Timeline simulation;
     private int simulatedSalvos;
 
+    private final StopWatch moveTimer = new StopWatch();
+
+    private final Timeline timerDisplay = new Timeline(
+            new KeyFrame(Duration.millis(100), e -> {
+                if (moveTimer.isStarted()) {
+                    long milliseconds = moveTimer.getTime(TimeUnit.MILLISECONDS);
+                    view.setTimer(milliseconds / 1000);
+                }
+            })
+    );
     // Muda a cada jogo novo: respostas atrasadas de um jogo antigo são ignoradas.
     private int generation;
 
@@ -126,7 +138,10 @@ public class BattleshipGUI extends Application {
             System.err.println("[GUI] Cannot start callback server: " + e);
             error("Cannot start callback server: " + e.getMessage());
         }
-
+        timerDisplay.stop();
+        moveTimer.reset();
+        view.setTimer(0);
+        view.setLastMoveTime(0);
         selectedShots.clear();
         shots = 0;
         hits = 0;
@@ -147,7 +162,27 @@ public class BattleshipGUI extends Application {
         updateStats();
         updateControls();
     }
+    private void startMoveTimer() {
+        moveTimer.reset();
+        moveTimer.start();
 
+        timerDisplay.setCycleCount(Animation.INDEFINITE);
+        timerDisplay.play();
+
+        view.setTimer(0);
+    }
+
+private void stopMoveTimer() {
+    if (moveTimer.isStarted()) {
+        moveTimer.stop();
+
+        double seconds = moveTimer.getTime(TimeUnit.MILLISECONDS) / 1000.0;
+        view.setLastMoveTime(seconds);
+        view.setTimer(moveTimer.getTime(TimeUnit.SECONDS));
+    }
+
+    timerDisplay.stop();
+}
     private void newGame() {
         resetLocalGame();
         final int gen = generation;
@@ -167,6 +202,7 @@ public class BattleshipGUI extends Application {
                     }
                     registered = true;
                     info("Game started. Select " + SHOTS_PER_TURN + " positions.");
+                    startMoveTimer();
                     updateControls();
                 }));
     }
@@ -254,7 +290,7 @@ public class BattleshipGUI extends Application {
         if (!canFire()) {
             return;
         }
-
+        stopMoveTimer();
         waiting = true;
         updateControls();
         info("Firing...");
@@ -284,6 +320,7 @@ public class BattleshipGUI extends Application {
             System.err.println("[GUI] fire failed: " + message(err));
             if (!gameOver) {
                 error(message(err)); // a seleção mantém-se para tentar de novo
+                startMoveTimer();
             }
             return;
         }
@@ -362,6 +399,7 @@ public class BattleshipGUI extends Application {
             warn(next);
         } else {
             info(next);
+            startMoveTimer();
         }
     }
 
@@ -476,6 +514,7 @@ public class BattleshipGUI extends Application {
     }
 
     private void endGame(boolean victory, String text, Tone tone) {
+        stopMoveTimer();
         gameOver = true;
         selectedShots.clear();
         enemyBoard.clearSelection();
