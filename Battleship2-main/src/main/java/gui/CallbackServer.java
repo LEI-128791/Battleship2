@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 
 /**
  * Recebe os tiros do AI e entrega-os ao Game existente.
- * Não decide nada: só traduz JSON <-> Game e avisa a GUI.
+ * Não decide nada: só traduz JSON entre o Game e a GUI.
  */
 public class CallbackServer {
 
