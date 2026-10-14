@@ -3,6 +3,7 @@ package battleship;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import java.text.MessageFormat;
 
 import java.util.*;
 
@@ -41,9 +42,11 @@ public class Game implements IGame
 		printBoardFrame(map);
 
 		if (showLegend) {
-			System.out.println("          LEGENDA");
-			System.out.println("'" + SHIP_MARKER + "'->navio, '" + SHIP_ADJACENT_MARKER + "'->adjacente a navio, '" + EMPTY_MARKER + "'->água");
-			System.out.println("'" + SHOT_SHIP_MARKER + "'->Tiro certeiro, '" + SHOT_WATER_MARKER + "'->Tiro na água");
+			System.out.println(Messages.get("legend.title"));
+			System.out.println(Messages.get("legend.ships",
+					SHIP_MARKER, SHIP_ADJACENT_MARKER, EMPTY_MARKER));
+			System.out.println(Messages.get("legend.shots",
+					SHOT_SHIP_MARKER, SHOT_WATER_MARKER));
 		}
 		System.out.println();
 	}
@@ -126,8 +129,8 @@ public class Game implements IGame
 		for (IPosition shot : shots) {
 			Map<String, Object> simplePos = new LinkedHashMap<>();
 			// We use getClassicRow() and getClassicColumn() based on your current JSON output
-			simplePos.put("row", String.valueOf(shot.getClassicRow()));
-			simplePos.put("column", shot.getClassicColumn());
+			simplePos.put(Messages.get("json.row"), String.valueOf(shot.getClassicRow()));
+			simplePos.put(Messages.get("json.column"), shot.getClassicColumn());
 			simplifiedShots.add(simplePos);
 		}
 
@@ -136,7 +139,7 @@ public class Game implements IGame
 			// 2. Serialize the simplified list instead of the raw 'shots' list
 			jsonString = objectMapper.writeValueAsString(simplifiedShots);
 		} catch (JsonProcessingException e) {
-			throw new RuntimeException("Erro ao serializar o JSON", e);
+			throw new RuntimeException(Messages.get("json.serializeError"), e);
 		}
 
 		System.out.println(jsonString);
@@ -257,7 +260,7 @@ public class Game implements IGame
 				shots.add(newShot);
 		}
 
-		System.out.print("rajada ");
+		System.out.println(Messages.get("command.fire"));
 		for (IPosition shot : shots)
 			System.out.print(shot + " ");
 		System.out.println();
@@ -301,7 +304,7 @@ public class Game implements IGame
 					int row = inputScanner.nextInt();
 					shots.add(new Position(token.toUpperCase().charAt(0), row));
 				} else {
-					throw new IllegalArgumentException("Posição incompleta! A coluna '" + token + "' não é seguida por uma linha.");
+					throw new IllegalArgumentException(MessageFormat.format(Messages.get("position.incomplete"), token));
 				}
 			} else {
 				// Caso o token já contenha a coluna e a linha juntas (ex.: "A3")
@@ -311,7 +314,7 @@ public class Game implements IGame
 		}
 
 		if (shots.size() != NUMBER_SHOTS) {
-			throw new IllegalArgumentException("Você deve inserir exatamente " + NUMBER_SHOTS + " posições!");
+			throw new IllegalArgumentException(MessageFormat.format(Messages.get("game.wrongShotCount"), NUMBER_SHOTS));
 		}
 
 		this.fireShots(shots);
@@ -337,7 +340,7 @@ public class Game implements IGame
 
 		List<ShotResult> shotResults = new ArrayList<ShotResult>();
 		if (shots.size() != NUMBER_SHOTS) {
-			throw new IllegalArgumentException("Must fire exactly " + NUMBER_SHOTS + " shots per move.");
+			throw new IllegalArgumentException(MessageFormat.format(Messages.get("game.wrongShotsPerMove"), NUMBER_SHOTS));
 		}
 
 		List<IPosition> alreadyShot = new ArrayList<IPosition>();
@@ -449,7 +452,7 @@ public class Game implements IGame
 	public void over() {
 			System.out.println();
 			System.out.println("+--------------------------------------------------------------+");
-			System.out.println("| Maldito sejas, Java Sparrow, eu voltarei, glub glub glub ... |");
+			System.out.println(Messages.get("game.farewell"));
 			System.out.println("+--------------------------------------------------------------+");
 	}
 }

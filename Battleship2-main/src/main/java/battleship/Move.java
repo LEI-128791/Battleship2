@@ -3,6 +3,7 @@ package battleship;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import java.text.MessageFormat;
 
 import java.util.*;
 
@@ -25,6 +26,12 @@ public class Move implements IMove {
 		this.number = moveNumber;
 		this.shots = moveShots;
 		this.shotResults = moveResults;
+	}
+	private static String msg(String key, Object... args) {
+		return MessageFormat.format(Messages.get(key), args);
+	}
+	private static String categoryName(String category) {
+		return Messages.get("category." + category.toLowerCase());
 	}
 
 	@Override
@@ -72,6 +79,7 @@ public class Move implements IMove {
 		Map<String, Integer> sunkBoatsCount = new HashMap<>(); // Rastrear quantos navios de cada tipo afundaram
 		Map<String, Integer> hitsPerBoat = new HashMap<>();
 
+
 		// Processar cada resultado de tiro
 		for (IGame.ShotResult result : this.shotResults) {
 			if (!result.valid()) {
@@ -103,33 +111,26 @@ public class Move implements IMove {
 			StringBuilder output = new StringBuilder();
 
 			if (validShots == 0 && repeatedShots > 0) {
-				output.append(repeatedShots).append(" tiro").append(repeatedShots > 1 ? "s" : "").append(" repetido").append(repeatedShots > 1 ? "s" : "");
+				output.append(msg("move.repeated", repeatedShots));
 			} else {
 				if (validShots > 0) {
-					output.append(validShots).append(" tiro").append(validShots > 1 ? "s" : "").append(" válido").append(validShots > 1 ? "s" : "").append(": ");
+					output.append(msg("move.validShots", validShots)).append(": ");
 				}
 
-				// Atualizar lógica para contar múltiplos barcos afundados do mesmo tipo
-				if (!sunkBoatsCount.isEmpty()) {
-					for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
-						String boatName = entry.getKey();
-						int count = entry.getValue();
-						output.append(count).append(" ").append(boatName).append(count > 1 ? "s" : "").append(" ao fundo").append(" + ");
-					}
+				// Barcos afundados (conta múltiplos do mesmo tipo)
+				for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
+					output.append(msg("move.sunk", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
 				}
 
-				if (!hitsPerBoat.isEmpty()) {
-					for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
-						String boatName = entry.getKey();
-						int hits = entry.getValue();
-						if (!sunkBoatsCount.containsKey(boatName)) {
-							output.append(hits).append(" tiro").append(hits > 1 ? "s" : "").append(" num(a) ").append(boatName).append(" + ");
-						}
+				// Acertos em barcos ainda a flutuar
+				for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
+					if (!sunkBoatsCount.containsKey(entry.getKey())) {
+						output.append(msg("move.hits", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
 					}
 				}
 
 				if (missedShots > 0) {
-					output.append(missedShots).append(" tiro").append(missedShots > 1 ? "s" : "").append(" na água");
+					output.append(msg("move.missed", missedShots));
 				} else if (!sunkBoatsCount.isEmpty() || !hitsPerBoat.isEmpty()) {
 					output.setLength(output.length() - 2); // Remover o "+" final
 				}
@@ -138,50 +139,49 @@ public class Move implements IMove {
 					if (validShots > 0) {
 						output.append(", ");
 					}
-					output.append(repeatedShots).append(" tiro").append(repeatedShots > 1 ? "s" : "").append(" repetido").append(repeatedShots > 1 ? "s" : "");
+					output.append(msg("move.repeated", repeatedShots));
 				}
 			}
 
-			// Adicionar contagem de tiros fora do tabuleiro
+			// Tiros fora do tabuleiro
 			if (outsideShots > 0) {
 				if (!output.isEmpty()) {
 					output.append(", ");
 				}
-				output.append(outsideShots).append(" tiro").append(outsideShots > 1 ? "s" : "").append(" exterior").append(outsideShots > 1 ? "es" : "");
+				output.append(msg("move.outside", outsideShots));
 			}
 
-			// Imprimir na consola se verbose for true
-			System.out.println("Jogada nº" + this.number + " -> " + output);
+			System.out.println(msg("move.header", this.number, output));
 		}
 
 		// Criar o mapa para o JSON
-		Map<String, Object> response = new HashMap<>();
-		response.put("validShots", validShots);
-		response.put("outsideShots", outsideShots);
-		response.put("repeatedShots", repeatedShots);
-		response.put("missedShots", missedShots);
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put(Messages.get("json.validShots"), validShots);
+		response.put(Messages.get("json.outsideShots"), outsideShots);
+		response.put(Messages.get("json.repeatedShots"), repeatedShots);
+		response.put(Messages.get("json.missedShots"), missedShots);
 
 		// Criar a lista de barcos afundados
 		List<Map<String, Object>> sunkBoats = new ArrayList<>();
 		for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
-			Map<String, Object> boat = new HashMap<>();
-			boat.put("type", entry.getKey());
-			boat.put("count", entry.getValue());
+			Map<String, Object> boat = new LinkedHashMap<>();
+			boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
+			boat.put(Messages.get("json.count"), entry.getValue());
 			sunkBoats.add(boat);
 		}
-		response.put("sunkBoats", sunkBoats);
+		response.put(Messages.get("json.sunkBoats"), sunkBoats);
 
 		// Criar a lista de acertos em barcos que não foram afundados
 		List<Map<String, Object>> boatHits = new ArrayList<>();
 		for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
 			if (!sunkBoatsCount.containsKey(entry.getKey())) {
-				Map<String, Object> boat = new HashMap<>();
-				boat.put("type", entry.getKey());
-				boat.put("hits", entry.getValue());
+				Map<String, Object> boat = new LinkedHashMap<>();
+				boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
+				boat.put(Messages.get("json.hits"), entry.getValue());
 				boatHits.add(boat);
 			}
 		}
-		response.put("hitsOnBoats", boatHits);
+		response.put(Messages.get("json.hitsOnBoats"), boatHits);
 
 		// Serializar o JSON utilizando Jackson
 		String jsonString;
