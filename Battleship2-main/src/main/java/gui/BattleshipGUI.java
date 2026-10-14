@@ -7,6 +7,7 @@ import battleship.IGame;
 import battleship.IMove;
 import battleship.IPosition;
 import battleship.IShip;
+import battleship.Messages;
 import battleship.Position;
 import battleship.PdfReportExporter;
 
@@ -29,10 +30,9 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CompletionException;
+import java.util.function.Supplier;
 import java.io.File;
 import java.nio.file.Path;
-import org.apache.commons.lang3.time.StopWatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Controlador da aplicação: liga o servidor (jogador -> AI), o Game existente (AI -> jogador)
@@ -72,20 +72,19 @@ public class BattleshipGUI extends Application {
     private Timeline simulation;
     private int simulatedSalvos;
 
-    private final StopWatch moveTimer = new StopWatch();
+    // Cronómetro do turno do jogador.
+    private Timeline turnTimer;
+    private long turnStartNanos;
 
-    private final Timeline timerDisplay = new Timeline(
-            new KeyFrame(Duration.millis(100), e -> {
-                if (moveTimer.isStarted()) {
-                    long milliseconds = moveTimer.getTime(TimeUnit.MILLISECONDS);
-                    view.setTimer(milliseconds / 1000);
-                }
-            })
-    );
     // Muda a cada jogo novo: respostas atrasadas de um jogo antigo são ignoradas.
     private int generation;
 
+
     private Stage primaryStage;
+
+    // Última mensagem da barra de estado, guardada como Supplier para ser re-traduzida.
+    private Supplier<String> lastStatus = () -> "";
+    private Tone lastTone = Tone.INFO;
 
     private final List<PdfReportExporter.MoveReport> playerMoveHistory =
             new ArrayList<>();
@@ -98,7 +97,8 @@ public class BattleshipGUI extends Application {
         enemyBoard = new BoardView(this::onEnemyCellClicked);
         this.primaryStage = stage;
         view = new GameView(playerBoard, enemyBoard, SHOTS_PER_TURN,
-                this::newGame, this::fire, this::simulate, this::exportPdf);
+                this::newGame, this::fire, this::simulate, this::exportPdf,
+                this::toggleLanguage);
 
         Scene scene = new Scene(view.getRoot());
         URL css = getClass().getResource("battleship.css");
@@ -117,11 +117,20 @@ public class BattleshipGUI extends Application {
         newGame(); // liga-se ao servidor logo no arranque
     }
 
+    // ---------------------------------------------------------------- Idioma
+
+    private void toggleLanguage() {
+        Messages.setLanguage(Messages.getLanguage().equals("pt") ? "en" : "pt");
+        view.refreshTexts();
+        view.setStatus(lastStatus.get(), lastTone); // volta a traduzir a mensagem atual
+    }
+
     // ---------------------------------------------------------------- Novo jogo
 
     private void resetLocalGame() {
         generation++;
         stopSimulation();
+
 
         if (callbackServer != null) {
             callbackServer.stop();
@@ -136,12 +145,9 @@ public class BattleshipGUI extends Application {
             callbackServer.start();
         } catch (IOException e) {
             System.err.println("[GUI] Cannot start callback server: " + e);
-            error("Cannot start callback server: " + e.getMessage());
+            error(() -> Messages.get("gui.callbackError", e.getMessage()));
         }
-        timerDisplay.stop();
-        moveTimer.reset();
-        view.setTimer(0);
-        view.setLastMoveTime(0);
+
         selectedShots.clear();
         shots = 0;
         hits = 0;
@@ -159,35 +165,17 @@ public class BattleshipGUI extends Application {
         }
 
         view.hideBanner();
+        stopTurnTimer();      // <-- novo
+        view.setTimer(0);     // <-- novo
         updateStats();
         updateControls();
     }
-    private void startMoveTimer() {
-        moveTimer.reset();
-        moveTimer.start();
 
-        timerDisplay.setCycleCount(Animation.INDEFINITE);
-        timerDisplay.play();
-
-        view.setTimer(0);
-    }
-
-private void stopMoveTimer() {
-    if (moveTimer.isStarted()) {
-        moveTimer.stop();
-
-        double seconds = moveTimer.getTime(TimeUnit.MILLISECONDS) / 1000.0;
-        view.setLastMoveTime(seconds);
-        view.setTimer(moveTimer.getTime(TimeUnit.SECONDS));
-    }
-
-    timerDisplay.stop();
-}
     private void newGame() {
         resetLocalGame();
         final int gen = generation;
         waiting = true;
-        info("Connecting to server...");
+        info(() -> Messages.get("gui.connecting"));
 
         client.register(view.serverUrl(), view.playerName(), callbackServer.getPort())
                 .whenComplete((ignored, err) -> Platform.runLater(() -> {
@@ -196,13 +184,14 @@ private void stopMoveTimer() {
                     }
                     waiting = false;
                     if (err != null) {
-                        System.err.println("[GUI] register failed: " + message(err));
-                        error("Connection error: " + message(err));
+                        final String msg = message(err);
+                        System.err.println("[GUI] register failed: " + msg);
+                        error(() -> Messages.get("gui.connectionError", msg));
                         return;
                     }
                     registered = true;
-                    info("Game started. Select " + SHOTS_PER_TURN + " positions.");
-                    startMoveTimer();
+                    info(() -> Messages.get("gui.gameStarted", SHOTS_PER_TURN));
+                    startTurnTimer();
                     updateControls();
                 }));
     }
@@ -211,15 +200,15 @@ private void stopMoveTimer() {
 
     private void exportPdf() {
         if (playerMoveHistory.isEmpty()) {
-            warn("Ainda nao existem jogadas para exportar.");
+            warn(() -> Messages.get("gui.noMoves"));
             return;
         }
 
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Export game history to PDF");
+        chooser.setTitle(Messages.get("gui.exportTitle"));
         chooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter(
-                        "PDF files (*.pdf)", "*.pdf"));
+                        Messages.get("gui.pdfFilter"), "*.pdf"));
         chooser.setInitialFileName("battleship-history.pdf");
 
         File selectedFile = chooser.showSaveDialog(primaryStage);
@@ -232,10 +221,10 @@ private void stopMoveTimer() {
             Path actualPath = PdfReportExporter.exportHistory(
                     playerMoveHistory, selectedFile.toPath());
 
-            info("History exported to: "
-                    + actualPath.toAbsolutePath());
+            info(() -> Messages.get("pdf.export.success")
+                    + " " + actualPath.toAbsolutePath());
         } catch (IOException e) {
-            error("PDF export failed: " + e.getMessage());
+            error(() -> Messages.get("pdf.export.error") + " " + e.getMessage());
         }
     }
 
@@ -247,15 +236,15 @@ private void stopMoveTimer() {
             return;
         }
         if (simulation != null) {
-            warn("Simulation running. Press STOP or NEW GAME.");
+            warn(() -> Messages.get("gui.simRunning"));
             return;
         }
         if (!registered) {
-            warn("Not connected. Press NEW GAME first.");
+            warn(() -> Messages.get("gui.notConnected"));
             return;
         }
         if (waiting) {
-            warn("Waiting for the server...");
+            warn(() -> Messages.get("gui.waitingServer"));
             return;
         }
 
@@ -265,24 +254,26 @@ private void stopMoveTimer() {
         if (state == CellState.SELECTED) {
             enemyBoard.set(row, column, CellState.WATER);
             selectedShots.removeIf(p -> p.getRow() == row && p.getColumn() == column);
-            info("Selected " + selectedShots.size() + "/" + SHOTS_PER_TURN);
+            final int count = selectedShots.size();
+            info(() -> Messages.get("gui.selectedCount", count, SHOTS_PER_TURN));
             updateControls();
             return;
         }
         if (state != CellState.WATER) {
-            warn("That position was already shot.");
+            warn(() -> Messages.get("gui.alreadyShot"));
             return;
         }
         if (selectedShots.size() >= SHOTS_PER_TURN) {
-            warn("Already " + SHOTS_PER_TURN + " selected. Press FIRE or click one to undo.");
+            warn(() -> Messages.get("gui.alreadySelected", SHOTS_PER_TURN));
             return;
         }
 
         IPosition position = new Position(row, column);
         selectedShots.add(position);
         enemyBoard.set(row, column, CellState.SELECTED);
-        info("Selected " + position.getClassicRow() + position.getClassicColumn()
-                + " (" + selectedShots.size() + "/" + SHOTS_PER_TURN + ")");
+        final String coordinate = "" + position.getClassicRow() + position.getClassicColumn();
+        final int count = selectedShots.size();
+        info(() -> Messages.get("gui.selectedPos", coordinate, count, SHOTS_PER_TURN));
         updateControls();
     }
 
@@ -290,14 +281,15 @@ private void stopMoveTimer() {
         if (!canFire()) {
             return;
         }
-        stopMoveTimer();
+
         waiting = true;
         updateControls();
-        info("Firing...");
+        info(() -> Messages.get("gui.firing"));
 
         // O servidor responde pela mesma ordem em que enviámos os tiros.
         final List<IPosition> sent = new ArrayList<>(selectedShots);
         final int gen = generation;
+        final double turnSeconds = elapsedSeconds();
 
         client.fire(sent).whenComplete((turn, err) -> Platform.runLater(() -> {
             if (gen != generation) {
@@ -305,9 +297,16 @@ private void stopMoveTimer() {
             }
             try {
                 handleTurn(sent, turn, err);
+                if (err == null) {
+                    view.setLastMoveTime(turnSeconds);
+                    if (!gameOver) {
+                        startTurnTimer();
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-                error("GUI error: " + e);
+                final String description = String.valueOf(e);
+                error(() -> Messages.get("gui.guiError", description));
             } finally {
                 waiting = false;
                 updateControls();
@@ -317,10 +316,10 @@ private void stopMoveTimer() {
 
     private void handleTurn(List<IPosition> sent, GameClient.TurnResult turn, Throwable err) {
         if (err != null) {
-            System.err.println("[GUI] fire failed: " + message(err));
+            final String msg = message(err);
+            System.err.println("[GUI] fire failed: " + msg);
             if (!gameOver) {
-                error(message(err)); // a seleção mantém-se para tentar de novo
-                startMoveTimer();
+                error(() -> msg); // a seleção mantém-se para tentar de novo
             }
             return;
         }
@@ -386,20 +385,24 @@ private void stopMoveTimer() {
             return;
         }
 
-        String summary = hitCount + (hitCount == 1 ? " hit, " : " hits, ")
-                + missCount + (missCount == 1 ? " miss" : " misses");
-        if (sunkName != null) {
-            summary = "Enemy " + sunkName + " sunk! " + summary;
-        }
-        if (repeated > 0) {
-            summary += ", " + repeated + " already shot";
-        }
-        String next = summary + ". Select " + SHOTS_PER_TURN + " positions.";
+        final int h = hitCount;
+        final int m = missCount;
+        final int rep = repeated;
+        final String sunk = sunkName;
+        Supplier<String> next = () -> {
+            String summary = Messages.get("gui.turnSummary", h, m);
+            if (sunk != null) {
+                summary = Messages.get("gui.enemySunk", sunk) + " " + summary;
+            }
+            if (rep > 0) {
+                summary += ", " + Messages.get("gui.repeated", rep);
+            }
+            return summary + " " + Messages.get("gui.selectPositions", SHOTS_PER_TURN);
+        };
         if (repeated > 0) {
             warn(next);
         } else {
             info(next);
-            startMoveTimer();
         }
     }
 
@@ -420,7 +423,7 @@ private void stopMoveTimer() {
 
             String outcome = i < results.size()
                     ? describeShotResult(results.get(i))
-                    : "Resultado nao disponivel";
+                    : Messages.get("pdf.result.unavailable");
 
             reportShots.add(
                     new PdfReportExporter.ShotReport(coordinate, outcome));
@@ -432,19 +435,21 @@ private void stopMoveTimer() {
                 new PdfReportExporter.MoveReport(moveNumber, reportShots));
     }
 
+    /** O histórico fica no idioma em que foi gerado (é guardado como String). */
     private String describeShotResult(GameClient.ShotResult result) {
         String shipType = result.shipType();
+        boolean hasType = shipType != null && !shipType.isBlank();
 
         return switch (result.outcome()) {
-            case INVALID -> "Tiro invalido";
-            case REPEATED -> "Tiro repetido";
-            case MISS -> "Agua";
-            case HIT -> shipType == null || shipType.isBlank()
-                    ? "Navio atingido"
-                    : "Navio atingido (" + shipType + ")";
-            case SUNK -> shipType == null || shipType.isBlank()
-                    ? "Navio afundado"
-                    : "Navio afundado (" + shipType + ")";
+            case INVALID -> Messages.get("pdf.shot.invalid");
+            case REPEATED -> Messages.get("pdf.shot.repeated");
+            case MISS -> Messages.get("pdf.shot.water");
+            case HIT -> hasType
+                    ? Messages.get("pdf.shot.hitType", shipType)
+                    : Messages.get("pdf.shot.hit");
+            case SUNK -> hasType
+                    ? Messages.get("pdf.shot.sunkType", shipType)
+                    : Messages.get("pdf.shot.sunk");
         };
     }
 
@@ -504,22 +509,22 @@ private void stopMoveTimer() {
     // ---------------------------------------------------------------- Fim de jogo
 
     private void showVictory() {
-        endGame(true, "VICTORY — all enemy ships sunk!", Tone.WIN);
+        endGame(true, () -> Messages.get("gui.victory"), Tone.WIN);
     }
 
     private void showDefeat() {
         if (!gameOver) {
-            endGame(false, "DEFEAT — your fleet has been destroyed.", Tone.LOSE);
+            endGame(false, () -> Messages.get("gui.defeat"), Tone.LOSE);
         }
     }
 
-    private void endGame(boolean victory, String text, Tone tone) {
-        stopMoveTimer();
+    private void endGame(boolean victory, Supplier<String> text, Tone tone) {
         gameOver = true;
+        stopTurnTimer();
         selectedShots.clear();
         enemyBoard.clearSelection();
         updateControls();
-        view.setStatus(text, tone);
+        status(text, tone);
         view.showBanner(victory);
     }
 
@@ -543,14 +548,14 @@ private void stopMoveTimer() {
     private void simulate() {
         if (simulation != null) {
             stopSimulation();
-            info("Simulation stopped.");
+            info(() -> Messages.get("gui.simStopped"));
             return;
         }
 
         resetLocalGame(); // frota nova, tabuleiros limpos, sem ligação ao servidor
         simulatedSalvos = 0;
         view.setSimulateRunning(true);
-        info("SIMULATION: random enemy fire against your fleet...");
+        info(() -> Messages.get("gui.simStarted"));
 
         simulation = new Timeline(new KeyFrame(Duration.millis(SIMULATION_DELAY_MS), e -> simulationStep()));
         simulation.setCycleCount(Animation.INDEFINITE);
@@ -595,13 +600,16 @@ private void stopMoveTimer() {
             showAiShot(new CallbackServer.ShotUpdate(shot.getRow(), shot.getColumn(), outcome));
         }
 
-        String summary = "Salvo " + simulatedSalvos + ": " + hitCount + (hitCount == 1 ? " hit, " : " hits, ")
-                + missCount + (missCount == 1 ? " miss" : " misses");
-        if (sunkName != null) {
-            summary = "Salvo " + simulatedSalvos + ": your " + sunkName + " sunk! (" + hitCount
-                    + (hitCount == 1 ? " hit, " : " hits, ") + missCount + (missCount == 1 ? " miss)" : " misses)");
-        }
-        info(summary);
+        final int salvo = simulatedSalvos;
+        final int h = hitCount;
+        final int m = missCount;
+        final String sunk = sunkName;
+        info(() -> {
+            String summary = Messages.get("gui.turnSummary", h, m);
+            return sunk == null
+                    ? Messages.get("gui.simSalvo", salvo, summary)
+                    : Messages.get("gui.simSalvoSunk", salvo, sunk, summary);
+        });
 
         if (playerGame.getRemainingShips() == 0) {
             finishSimulation();
@@ -612,8 +620,11 @@ private void stopMoveTimer() {
         stopSimulation();
         gameOver = true;
         updateControls();
-        view.setStatus("Simulation complete: fleet destroyed in " + simulatedSalvos + " salvos.", Tone.INFO);
-        view.showBanner("SIMULATION COMPLETE", "Fleet destroyed in " + simulatedSalvos + " salvos.", "banner-neutral");
+        final int salvos = simulatedSalvos;
+        status(() -> Messages.get("gui.simComplete.status", salvos), Tone.INFO);
+        view.showBanner(() -> Messages.get("gui.simComplete.title"),
+                () -> Messages.get("gui.simComplete.subtitle", salvos),
+                "banner-neutral");
     }
 
     private void stopSimulation() {
@@ -623,6 +634,26 @@ private void stopMoveTimer() {
         }
         if (view != null) {
             view.setSimulateRunning(false);
+        }
+    }
+    private double elapsedSeconds() {
+        return (System.nanoTime() - turnStartNanos) / 1_000_000_000.0;
+    }
+
+    private void startTurnTimer() {
+        stopTurnTimer();
+        turnStartNanos = System.nanoTime();
+        view.setTimer(0);
+        turnTimer = new Timeline(new KeyFrame(Duration.seconds(1),
+                e -> view.setTimer((long) elapsedSeconds())));
+        turnTimer.setCycleCount(Animation.INDEFINITE);
+        turnTimer.play();
+    }
+
+    private void stopTurnTimer() {
+        if (turnTimer != null) {
+            turnTimer.stop();
+            turnTimer = null;
         }
     }
 
@@ -643,16 +674,24 @@ private void stopMoveTimer() {
         view.setPlayerAfloat(playerFleet.getFloatingShips().size(), playerShips);
     }
 
-    private void info(String text) {
-        view.setStatus(text, Tone.INFO);
+    // ---------------------------------------------------------------- Barra de estado
+
+    private void status(Supplier<String> text, Tone tone) {
+        lastStatus = text;
+        lastTone = tone;
+        view.setStatus(text.get(), tone);
     }
 
-    private void warn(String text) {
-        view.setStatus(text, Tone.WARN);
+    private void info(Supplier<String> text) {
+        status(text, Tone.INFO);
     }
 
-    private void error(String text) {
-        view.setStatus(text, Tone.ERROR);
+    private void warn(Supplier<String> text) {
+        status(text, Tone.WARN);
+    }
+
+    private void error(Supplier<String> text) {
+        status(text, Tone.ERROR);
     }
 
     private String message(Throwable err) {

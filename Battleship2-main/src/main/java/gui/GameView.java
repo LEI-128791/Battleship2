@@ -1,5 +1,7 @@
 package gui;
 
+import battleship.Messages;
+
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.RotateTransition;
@@ -10,6 +12,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Labeled;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -24,6 +27,10 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
+
 /**
  * Layout e widgets da janela (cabeçalho, painéis, barra de estado, controlos, banner final).
  * Não tem lógica de jogo: o BattleshipGUI diz-lhe o que mostrar.
@@ -36,6 +43,9 @@ public class GameView {
     private static final Color CYAN = Color.web("#4FC3F7");
 
     private final StackPane root = new StackPane();
+
+    /** Tudo o que tem de voltar a ler o texto quando o idioma muda. */
+    private final List<Runnable> translators = new ArrayList<>();
 
     private final TextField playerNameField = new TextField("Player");
     private final TextField serverField = new TextField("http://localhost:8080");
@@ -51,30 +61,39 @@ public class GameView {
 
     private final Label playerAfloat = new Label();
     private final Label enemyAfloat = new Label();
+    private int playerAfloatCount;
+    private int playerAfloatTotal;
+    private int enemyAfloatCount;
+    private int enemyAfloatTotal;
 
     private final Circle[] pips;
-    private final Button fireButton = new Button("FIRE");
-    private final Button simulateButton = new Button("SIMULATE");
-    private final Button exportButton = new Button("EXPORT PDF");
+    private final Button fireButton = new Button();
+    private final Button simulateButton = new Button();
+    private final Button exportButton = new Button();
+    private final Button languageButton = new Button();
+    private boolean simulateRunning;
 
     private final VBox banner = new VBox(10);
     private final Label bannerTitle = new Label();
     private final Label bannerSubtitle = new Label();
+    private Supplier<String> bannerTitleText = () -> "";
+    private Supplier<String> bannerSubtitleText = () -> "";
 
     public GameView(BoardView player, BoardView enemy, int shotsPerTurn,
                     Runnable onNewGame, Runnable onFire,
-                    Runnable onSimulate, Runnable onExportPdf) {
+                    Runnable onSimulate, Runnable onExportPdf,
+                    Runnable onLanguage) {
 
         pips = new Circle[shotsPerTurn];
 
         BorderPane content = new BorderPane();
         content.getStyleClass().add("root-pane");
         content.setPadding(new Insets(16, 20, 18, 20));
-        content.setTop(header(onNewGame));
+        content.setTop(header(onNewGame, onLanguage));
 
         HBox boards = new HBox(22,
-                panel("YOUR FLEET", playerAfloat, player),
-                panel("ENEMY WATERS", enemyAfloat, enemy));
+                panel("gui.yourFleet", playerAfloat, player),
+                panel("gui.enemyWaters", enemyAfloat, enemy));
         boards.setAlignment(Pos.CENTER);
         content.setCenter(boards);
 
@@ -83,7 +102,36 @@ public class GameView {
         buildBanner(onNewGame);
         root.getChildren().addAll(content, banner);
 
-        setStatus("Press NEW GAME to start.", Tone.INFO);
+        setStatus(Messages.get("gui.pressNewGame"), Tone.INFO);
+        refreshTexts();
+    }
+
+    // ------------------------------------------------------------ Idioma
+
+    /** Escreve outra vez todos os textos fixos no idioma atual do Messages. */
+    public void refreshTexts() {
+        for (Runnable translator : translators) {
+            translator.run();
+        }
+        languageButton.setText(Messages.getLanguage().equals("pt") ? "EN" : "PT");
+        renderAfloat();
+        updateSimulateText();
+        bannerTitle.setText(bannerTitleText.get());
+        bannerSubtitle.setText(bannerSubtitleText.get());
+    }
+
+    /** Liga um texto fixo a uma chave: fica traduzido já e volta a traduzir-se em refreshTexts(). */
+    private <T extends Labeled> T bind(T node, String key) {
+        Runnable translator = () -> node.setText(Messages.get(key));
+        translator.run();
+        translators.add(translator);
+        return node;
+    }
+
+    private Label label(String key, String styleClass) {
+        Label label = bind(new Label(), key);
+        label.getStyleClass().add(styleClass);
+        return label;
     }
 
     // ------------------------------------------------------------ API
@@ -119,7 +167,12 @@ public class GameView {
 
     /** Durante a simulação o botão passa a STOP. */
     public void setSimulateRunning(boolean running) {
-        simulateButton.setText(running ? "STOP" : "SIMULATE");
+        simulateRunning = running;
+        updateSimulateText();
+    }
+
+    private void updateSimulateText() {
+        simulateButton.setText(Messages.get(simulateRunning ? "gui.stop" : "gui.simulate"));
     }
 
     public void setSelected(int count) {
@@ -150,24 +203,44 @@ public class GameView {
     }
 
     public void setPlayerAfloat(int afloat, int total) {
-        playerAfloat.setText("AFLOAT " + afloat + "/" + total);
+        playerAfloatCount = afloat;
+        playerAfloatTotal = total;
+        renderAfloat();
     }
 
     public void setEnemyAfloat(int afloat, int total) {
-        enemyAfloat.setText("AFLOAT " + afloat + "/" + total);
+        enemyAfloatCount = afloat;
+        enemyAfloatTotal = total;
+        renderAfloat();
+    }
+
+    private void renderAfloat() {
+        if (playerAfloatTotal > 0) {
+            playerAfloat.setText(Messages.get("gui.afloat", playerAfloatCount, playerAfloatTotal));
+        }
+        if (enemyAfloatTotal > 0) {
+            enemyAfloat.setText(Messages.get("gui.afloat", enemyAfloatCount, enemyAfloatTotal));
+        }
     }
 
     public void showBanner(boolean victory) {
-        showBanner(victory ? "VICTORY" : "DEFEAT",
-                victory ? "All enemy ships have been sunk." : "Your fleet has been destroyed.",
+        String prefix = victory ? "gui.banner.victory" : "gui.banner.defeat";
+        showBanner(() -> Messages.get(prefix + ".title"),
+                () -> Messages.get(prefix + ".subtitle"),
                 victory ? "banner-win" : "banner-lose");
     }
 
-    /** @param styleClass banner-win (dourado), banner-lose (vermelho) ou banner-neutral (azul) */
-    public void showBanner(String title, String subtitle, String styleClass) {
-        bannerTitle.setText(title);
+    /**
+     * Os textos são Supplier para poderem ser reescritos se o idioma mudar com o banner visível.
+     *
+     * @param styleClass banner-win (dourado), banner-lose (vermelho) ou banner-neutral (azul)
+     */
+    public void showBanner(Supplier<String> title, Supplier<String> subtitle, String styleClass) {
+        bannerTitleText = title;
+        bannerSubtitleText = subtitle;
+        bannerTitle.setText(title.get());
         bannerTitle.getStyleClass().setAll("banner-title", styleClass);
-        bannerSubtitle.setText(subtitle);
+        bannerSubtitle.setText(subtitle.get());
         banner.setOpacity(0);
         banner.setVisible(true);
         FadeTransition fade = new FadeTransition(Duration.millis(600), banner);
@@ -181,11 +254,10 @@ public class GameView {
 
     // ------------------------------------------------------- Secções
 
-    private Node header(Runnable onNewGame) {
+    private Node header(Runnable onNewGame, Runnable onLanguage) {
         Label title = new Label("BATTLESHIP");
         title.getStyleClass().add("title");
-        Label subtitle = new Label("NAVAL COMMAND CENTER");
-        subtitle.getStyleClass().add("subtitle");
+        Label subtitle = label("gui.subtitle", "subtitle");
 
         HBox brand = new HBox(12, radarIcon(), new VBox(0, title, subtitle));
         brand.setAlignment(Pos.CENTER_LEFT);
@@ -193,12 +265,17 @@ public class GameView {
         playerNameField.setPrefWidth(120);
         serverField.setPrefWidth(190);
 
-        Button newGame = new Button("NEW GAME");
+        Button newGame = bind(new Button(), "gui.newGame");
         newGame.getStyleClass().add("secondary-button");
         newGame.setOnAction(e -> onNewGame.run());
 
-        HBox connection = new HBox(8, caption("PLAYER"), playerNameField,
-                caption("SERVER"), serverField, newGame);
+        languageButton.getStyleClass().add("secondary-button");
+        languageButton.setOnAction(e -> onLanguage.run());
+
+        HBox connection = new HBox(8,
+                label("gui.player", "field-caption"), playerNameField,
+                label("gui.server", "field-caption"), serverField,
+                newGame, languageButton);
         connection.setAlignment(Pos.CENTER_RIGHT);
 
         Region spacer = new Region();
@@ -210,9 +287,8 @@ public class GameView {
         return header;
     }
 
-    private Node panel(String title, Label badge, BoardView board) {
-        Label name = new Label(title);
-        name.getStyleClass().add("panel-title");
+    private Node panel(String titleKey, Label badge, BoardView board) {
+        Label name = label(titleKey, "panel-title");
         badge.getStyleClass().add("badge");
 
         Region spacer = new Region();
@@ -233,7 +309,11 @@ public class GameView {
         statusBar.setMinHeight(42);
 
         HBox stats = new HBox(22,
-                stat("SHOTS", shotsValue), stat("HITS", hitsValue), stat("ACCURACY", accuracyValue),stat("TURN TIME", timerValue), stat("LAST TURN", lastMoveTimeValue));
+                stat("gui.shots", shotsValue),
+                stat("gui.hits", hitsValue),
+                stat("gui.accuracy", accuracyValue),
+                stat("gui.turnTime", timerValue),
+                stat("gui.lastTurn", lastMoveTimeValue));
         stats.setAlignment(Pos.CENTER_LEFT);
 
         HBox pipBox = new HBox(6);
@@ -245,13 +325,16 @@ public class GameView {
             pipBox.getChildren().add(pips[i]);
         }
 
+        bind(fireButton, "gui.fire");
         fireButton.getStyleClass().add("fire-button");
         fireButton.setDisable(true);
         fireButton.setOnAction(e -> onFire.run());
 
+        // O texto deste botão depende de simulateRunning: é escrito em refreshTexts().
         simulateButton.getStyleClass().add("secondary-button");
         simulateButton.setOnAction(e -> onSimulate.run());
 
+        bind(exportButton, "gui.exportPdf");
         exportButton.getStyleClass().add("secondary-button");
         exportButton.setDisable(true);
         exportButton.setOnAction(e -> onExportPdf.run());
@@ -276,11 +359,11 @@ public class GameView {
     private void buildBanner(Runnable onNewGame) {
         bannerSubtitle.getStyleClass().add("banner-subtitle");
 
-        Button again = new Button("NEW GAME");
+        Button again = bind(new Button(), "gui.newGame");
         again.getStyleClass().add("fire-button");
         again.setOnAction(e -> onNewGame.run());
 
-        Button view = new Button("VIEW BOARDS");
+        Button view = bind(new Button(), "gui.viewBoards");
         view.getStyleClass().add("secondary-button");
         view.setOnAction(e -> banner.setVisible(false));
 
@@ -327,15 +410,8 @@ public class GameView {
         return c;
     }
 
-    private static Label caption(String text) {
-        Label label = new Label(text);
-        label.getStyleClass().add("field-caption");
-        return label;
-    }
-
-    private static VBox stat(String caption, Label value) {
-        Label label = new Label(caption);
-        label.getStyleClass().add("stat-caption");
+    private VBox stat(String captionKey, Label value) {
+        Label label = label(captionKey, "stat-caption");
         value.getStyleClass().add("stat-value");
         return new VBox(1, label, value);
     }
@@ -352,8 +428,9 @@ public class GameView {
         shot.setStrokeWidth(2);
 
         HBox legend = new HBox(12,
-                item(hit, "Hit"), item(miss, "Miss"), item(sunk, "Sunk"),
-                item(target, "Target"), item(shot, "Already shot"));
+                item(hit, "gui.legend.hit"), item(miss, "gui.legend.miss"),
+                item(sunk, "gui.legend.sunk"), item(target, "gui.legend.target"),
+                item(shot, "gui.legend.alreadyShot"));
         legend.setAlignment(Pos.CENTER_RIGHT);
         return legend;
     }
@@ -366,12 +443,11 @@ public class GameView {
         return line;
     }
 
-    private static HBox item(Node icon, String text) {
+    private HBox item(Node icon, String textKey) {
         StackPane holder = new StackPane(icon);
         holder.setMinSize(16, 16);
         holder.setMaxSize(16, 16);
-        Label label = new Label(text);
-        label.getStyleClass().add("legend-text");
+        Label label = label(textKey, "legend-text");
         HBox box = new HBox(5, holder, label);
         box.setAlignment(Pos.CENTER_LEFT);
         return box;

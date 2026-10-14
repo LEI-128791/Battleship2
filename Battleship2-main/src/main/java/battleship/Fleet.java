@@ -5,6 +5,7 @@ package battleship;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.text.MessageFormat;
 
 /**
  * The type Fleet.
@@ -222,7 +223,9 @@ public class Fleet implements IFleet
 	 */
 	public void printStatus()
     {
-		System.out.println("Estado da Frota: " + this.getFloatingShips().size() + " a flutuar, " + this.getSunkShips().size() + " afundados!");
+		System.out.println(MessageFormat.format(Messages.get("fleet.status"),
+				this.getFloatingShips().size(),
+				this.getSunkShips().size()));
 //		printAllShips();
 //		printFloatingShips();
 //		printShipsByCategory("Galeao");
