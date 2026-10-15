@@ -20,6 +20,7 @@
 - [Project Overview](#-project-overview)
 - [Key Features](#-key-features)
 - [Student Contributions](#-student-contributions)
+- [AI Opponent (LLM)](#-ai-opponent-llm)
 - [Technical Stack](#-technical-stack)
 - [Installation & Setup](#-installation--setup)
 - [Code Architecture](#-code-architecture)
@@ -103,6 +104,130 @@ The TUI provides the `exportapdf` command to generate the report. The exporter a
 The graphical interface includes an export workflow with a file chooser; its end-to-end behaviour is still being validated.
 
 The export functionality is implemented in a shared `PdfReportExporter` class, allowing both interfaces to reuse the same PDF-generation logic.
+
+---
+
+## 🤖 AI Opponent (LLM)
+
+We trained an LLM (Gemini Pro) to play Battleship against our program using **few-shot prompting**. Shots and results are exchanged as JSON (copy & paste between the LLM and the console).
+
+### Communication protocol
+
+The `rajada` / `fire` command accepts a volley in the LLM's JSON format. It may span several lines, be pasted on the line after the command, or come inside a ```json code block, as chats usually return it:
+
+```json
+{
+[ {"row": "A", "column": 5},
+  {"row": "C", "column": 10},
+  {"row": "F", "column" : 5} ]
+}
+```
+
+The program answers with the JSON produced by `Move.processEnemyFire`. It always uses the protocol's keys and ship names, whatever the interface language:
+
+```json
+{
+  "validShots" : 3,
+  "sunkBoats" : [ { "count" : 1, "type" : "Barca" } ],
+  "repeatedShots" : 0,
+  "outsideShots" : 0,
+  "hitsOnBoats" : [ { "hits" : 1, "type" : "Nau" } ],
+  "missedShots" : 1
+}
+```
+
+### Final strategy prompt
+
+Designed so that weaker models also play well, and tested against the same fixed fleets (loaded with `lefrota`) so luck does not hide the differences. Every answer must have 3 parts (state sheet, written check of each shot, JSON volley), shown in a full example. Searching follows a precomputed list. Hunting uses one rule taken from a simulator of a perfect player: list every possible position of each hit ship and fire at the cells that appear in the most positions. Every volley still has exactly 3 shots. Results on the same fleets: Claude Haiku averaged **22.7 volleys** (22, 23, 23), against 25.3 with the previous version; Claude Opus needed **22** on fleet 2 (27 before). A simulated perfect player needs about 21–22 on these fleets. See [JOGO_CONTRA_LLM.md](JOGO_CONTRA_LLM.md).
+
+**Copy & paste tip:** after each `rajada`, the program also prints a single line to paste into the chat: the JSON response, the list of every shot the LLM has already fired (grouped by row) and a short reminder of the answer format. It only repeats the LLM's own shots, so it gives away nothing about the fleet, but it means the LLM never has to remember them.
+
+```text
+Considere agora a seguinte tática de geração de rajadas de tiros. Objetivo: afundar os
+11 navios inimigos (25 casas) no menor número de rajadas. Cada rajada tem SEMPRE 3 tiros.
+
+########## FORMATO OBRIGATÓRIO DE CADA RESPOSTA (3 partes, sempre, sem exceções) ##########
+1) FICHA
+   Tiros: copie a lista "Tiros já disparados" que vem com cada resposta do inimigo.
+   Mapa:  10 linhas (A a J) x 10 colunas, com X = acerto, ? = acerto possível,
+          # = navio afundado, ~ = água, . = desconhecido.
+   Faltam: navios ainda por afundar.
+   Hipóteses: posições possíveis dos navios atingidos ou afundados que ainda são dúvida.
+2) VERIFICAÇÃO — uma linha por tiro: "C5: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM"
+3) RAJADA — só o JSON, no fim:
+   { [ {"row": "C", "column": 5}, {"row": "F", "column": 2}, {"row": "I", "column": 7} ] }
+Uma resposta sem as 3 partes está errada. Se um tiro falhar a VERIFICAÇÃO, troque-o.
+
+########## NAVIOS ##########
+Barca 1 · Caravela 2 · Nau 3 (x2) · Fragata 4 · Galeão 5. Caravelas, Naus e Fragata são linhas
+retas (horizontal ou vertical). O Galeão só tem estas 4 formas (# = navio):
+  Norte    Sul      Este     Oeste
+  # # #    . # .    . . #    # . .
+  . # .    . # .    # # #    # # #
+  . # .    # # #    . . #    # . .
+Os navios NUNCA se tocam, nem na diagonal: as 8 casas à volta de um navio são água.
+
+########## LER A RESPOSTA ##########
+a) Tiros que afundaram navios = validShots − missedShots − soma dos "hits"
+   (é um número de TIROS: 2 tiros podem afundar 1 só navio).
+b) "hitsOnBoats" com acerto e não sabe em que tiro? Marque "?" nos tiros dessa rajada que
+   ainda podem ser esse navio.
+c) "sunkBoats": navio afundado. Não o cace. Junte as casas dele, marque "#" e o halo "~".
+   Se houver dúvida sobre onde estava, escreva as hipóteses e só marque "~" onde for água
+   em TODAS. Uma Barca afundada não precisa de mais tiros.
+d) Só marque "~" onde disparou e deu água, ou no halo de um navio afundado.
+e) Confirme: nenhum navio pode ter mais acertos do que o seu tamanho. Se não bater certo,
+   corrija as hipóteses antes de disparar.
+
+########## ESCOLHER OS 3 TIROS ##########
+CAÇA — se houver acertos (X ou ?) de navios ainda por afundar:
+1. Em "Hipóteses", escreva TODAS as posições possíveis (casas exatas) de cada navio atingido.
+   Uma posição só é possível se respeitar a forma e o tamanho do navio, os acertos, a água,
+   o halo dos navios afundados e as contagens de TODAS as respostas anteriores.
+2. Conte em quantas hipóteses aparece cada casa "." e dispare nas 3 casas que aparecem em
+   MAIS hipóteses. Uma casa que aparece em todas completa o navio de certeza.
+3. Se houver menos de 3 casas úteis, complete com a lista de PROCURA.
+PROCURA — se não houver nenhum navio atingido por afundar: percorra a lista pela ordem,
+saltando casas já disparadas, "~" ou ao lado de um "#":
+   Fase 1: H8 E3 C9 | I3 B10 F10 | C5 J2 I7 | A3 A7 G5 | B6 F2 G9 | D4 D8 H4 | J6 B2 F6 | E7 G1 C1 | J10
+   Fase 2: I9 G3 A5 | H2 D10 B4 | E9 I1 A9 | C7 H6 H10 | D6 D2 I5 | E1 E5 A1 | G7 B8 C3 | F4 F8 J4 | J8
+   Fase 3 (só faltam Barcas): escreva as casas "." onde ainda pode haver uma Barca (sem tocar
+   em nenhum navio, em nenhuma hipótese) e dispare nelas, começando pelas que não dependem
+   de nenhuma dúvida.
+ÚLTIMA RAJADA: se faltarem menos de 3 casas possíveis, os tiros que sobram podem ir para
+casas "~" (é a única exceção permitida).
+
+########## EXEMPLO DE UMA RESPOSTA COMPLETA ##########
+(depois de: Rajada 1 = H8 E3 C9 → 1 acerto numa Nau, 2 água)
+1) FICHA
+   Tiros: [C: 9 | E: 3 | H: 8]
+   Mapa:
+     1 2 3 4 5 6 7 8 9 10
+   A . . . . . . . . . .
+   B . . . . . . . . . .
+   C . . . . . . . . ? .
+   D . . . . . . . . . .
+   E . . ? . . . . . . .
+   F . . . . . . . . . .
+   G . . . . . . . . . .
+   H . . . . . . . ? . .
+   I . . . . . . . . . .
+   J . . . . . . . . . .
+   Faltam: Galeão, Fragata, Nau x2, Caravela x3, Barca x4
+   Hipóteses: o acerto na Nau foi em H8, E3 ou C9. As posições possíveis da Nau passam
+   por uma destas casas; as que aparecem em mais posições são os vizinhos H7, E4 e C8.
+2) VERIFICAÇÃO
+   H7: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM
+   E4: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM
+   C8: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM
+3) RAJADA
+   { [ {"row": "H", "column": 7}, {"row": "E", "column": 4}, {"row": "C", "column": 8} ] }
+
+Se a sua frota for toda afundada, declare a derrota com honra. Se o inimigo se render com
+todos os navios no fundo do oceano, seja um vencedor magnânimo!
+```
+
+> Few-shot examples used to teach the protocol, and the exact prompts used to set up the game, are in the assignment statement (Sprint – Parte 2).
 
 ---
 

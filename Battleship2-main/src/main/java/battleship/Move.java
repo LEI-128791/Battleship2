@@ -76,8 +76,10 @@ public class Move implements IMove {
 		int repeatedShots = 0;
 		int missedShots = 0;
 
-		Map<String, Integer> sunkBoatsCount = new HashMap<>(); // Rastrear quantos navios de cada tipo afundaram
-		Map<String, Integer> hitsPerBoat = new HashMap<>();
+		Map<String, Integer> sunkBoatsCount = new LinkedHashMap<>(); // Rastrear quantos navios de cada tipo afundaram
+		Map<String, Integer> hitsPerBoat = new LinkedHashMap<>();   // Acertos em navios que continuam a flutuar
+		Map<IShip, Integer> hitsPerShip = new LinkedHashMap<>();    // Acertos por navio (não por tipo)
+		Set<IShip> sunkShips = new HashSet<>();                     // Navios afundados nesta rajada
 
 
 		// Processar cada resultado de tiro
@@ -95,12 +97,21 @@ public class Move implements IMove {
 				if (result.ship() == null)
 					missedShots++; // Tiro na água
 				else{
-					String boatName = result.ship().getCategory();
-					hitsPerBoat.put(boatName, hitsPerBoat.getOrDefault(boatName, 0) + 1);
-					if (result.sunk())
-						sunkBoatsCount.put(boatName, sunkBoatsCount.getOrDefault(boatName, 0) + 1); // Contar barcos do mesmo tipo afundados
+					hitsPerShip.merge(result.ship(), 1, Integer::sum);
+					if (result.sunk()) {
+						sunkShips.add(result.ship());
+						sunkBoatsCount.merge(result.ship().getCategory(), 1, Integer::sum); // Contar barcos do mesmo tipo afundados
+					}
 				}
 			}
+		}
+
+		// Os acertos num navio afundado nesta rajada contam só como afundado; os restantes
+		// somam-se por tipo (ex.: uma nau ao fundo e um tiro noutra nau)
+		for (Map.Entry<IShip, Integer> entry : hitsPerShip.entrySet()) {
+			if (sunkShips.contains(entry.getKey()))
+				continue;
+			hitsPerBoat.merge(entry.getKey().getCategory(), entry.getValue(), Integer::sum);
 		}
 
 		// Determinar número de tiros fora do tabuleiro
@@ -124,9 +135,7 @@ public class Move implements IMove {
 
 				// Acertos em barcos ainda a flutuar
 				for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
-					if (!sunkBoatsCount.containsKey(entry.getKey())) {
-						output.append(msg("move.hits", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
-					}
+					output.append(msg("move.hits", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
 				}
 
 				if (missedShots > 0) {
@@ -154,34 +163,32 @@ public class Move implements IMove {
 			System.out.println(msg("move.header", this.number, output));
 		}
 
-		// Criar o mapa para o JSON
-		Map<String, Object> response = new LinkedHashMap<>();
-		response.put(Messages.get("json.validShots"), validShots);
-		response.put(Messages.get("json.outsideShots"), outsideShots);
-		response.put(Messages.get("json.repeatedShots"), repeatedShots);
-		response.put(Messages.get("json.missedShots"), missedShots);
-
-		// Criar a lista de barcos afundados
+		// Criar o mapa para o JSON (chaves e nomes fixos do protocolo de comunicação com o LLM,
+		// independentes da língua escolhida)
 		List<Map<String, Object>> sunkBoats = new ArrayList<>();
 		for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
 			Map<String, Object> boat = new LinkedHashMap<>();
-			boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
-			boat.put(Messages.get("json.count"), entry.getValue());
+			boat.put("count", entry.getValue());
+			boat.put("type", entry.getKey());
 			sunkBoats.add(boat);
 		}
-		response.put(Messages.get("json.sunkBoats"), sunkBoats);
 
-		// Criar a lista de acertos em barcos que não foram afundados
+		// Acertos em barcos que não foram afundados
 		List<Map<String, Object>> boatHits = new ArrayList<>();
 		for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
-			if (!sunkBoatsCount.containsKey(entry.getKey())) {
-				Map<String, Object> boat = new LinkedHashMap<>();
-				boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
-				boat.put(Messages.get("json.hits"), entry.getValue());
-				boatHits.add(boat);
-			}
+			Map<String, Object> boat = new LinkedHashMap<>();
+			boat.put("hits", entry.getValue());
+			boat.put("type", entry.getKey());
+			boatHits.add(boat);
 		}
-		response.put(Messages.get("json.hitsOnBoats"), boatHits);
+
+		Map<String, Object> response = new LinkedHashMap<>();
+		response.put("validShots", validShots);
+		response.put("sunkBoats", sunkBoats);
+		response.put("repeatedShots", repeatedShots);
+		response.put("outsideShots", outsideShots);
+		response.put("hitsOnBoats", boatHits);
+		response.put("missedShots", missedShots);
 
 		// Serializar o JSON utilizando Jackson
 		String jsonString;
