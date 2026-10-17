@@ -409,8 +409,8 @@ public class Game implements IGame
 
 	/**
 	 * Builds the single line to paste into the LLM chat: the JSON response, the logbook (every volley
-	 * with its result), every shot fired so far (grouped by row, so the LLM never has to remember them)
-	 * and a short reminder of the answer format.
+	 * with its result), every shot fired so far and the cells not fired yet (grouped by row, so the LLM
+	 * never has to remember them) and a short reminder of the answer format.
 	 * It only repeats what the LLM already received, so it gives no information about the fleet.
 	 *
 	 * @param json the JSON response produced by {@link Move#processEnemyFire(boolean)}
@@ -428,7 +428,7 @@ public class Game implements IGame
 			StringJoiner shots = new StringJoiner(" ");
 			for (IPosition p : m.getShots())
 				shots.add(p.toString());
-			diary.add("R" + m.getNumber() + " " + shots + " = " + m.getSummary());
+			diary.add("R" + m.getNumber() + " " + shots + " = " + m.getSummary().trim());
 		}
 
 		StringJoiner fired = new StringJoiner(" | ");
@@ -436,6 +436,19 @@ public class Game implements IGame
 			StringJoiner cols = new StringJoiner(" ");
 			row.getValue().stream().distinct().sorted().forEach(c -> cols.add(String.valueOf(c)));
 			fired.add(row.getKey() + ": " + cols);
+		}
+
+		// Casas livres: o complemento dos tiros já disparados (a mesma informação, vista ao contrário)
+		StringJoiner free = new StringJoiner(" | ");
+		for (int r = 0; r < BOARD_SIZE; r++) {
+			char rowName = (char) ('A' + r);
+			List<Integer> shot = byRow.getOrDefault(rowName, List.of());
+			StringJoiner cols = new StringJoiner(" ");
+			for (int c = 1; c <= BOARD_SIZE; c++)
+				if (!shot.contains(c))
+					cols.add(String.valueOf(c));
+			if (cols.length() > 0)
+				free.add(rowName + ": " + cols);
 		}
 
 		String compact;
@@ -449,6 +462,7 @@ public class Game implements IGame
 		return Messages.get("llm.copy") + System.lineSeparator()
 				+ compact + " " + MessageFormat.format(Messages.get("llm.diary"), diary.toString())
 				+ " " + MessageFormat.format(Messages.get("llm.fired"), fired.toString())
+				+ " " + MessageFormat.format(Messages.get("llm.free"), free.toString())
 				+ " " + Messages.get("llm.reminder");
 	}
 
