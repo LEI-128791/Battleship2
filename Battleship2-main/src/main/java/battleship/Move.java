@@ -20,6 +20,7 @@ public class Move implements IMove {
 	private final int number;
 	private final List<IPosition> shots;
 	private final List<IGame.ShotResult> shotResults;
+	private String summary = "";
 
 	//-------------------------------------------------------------------
 	public Move(int moveNumber, List<IPosition> moveShots, List<IGame.ShotResult> moveResults) {
@@ -56,6 +57,11 @@ public class Move implements IMove {
 	@Override
 	public List<IGame.ShotResult> getShotResults() {
 		return this.shotResults;
+	}
+
+	@Override
+	public String getSummary() {
+		return this.summary;
 	}
 
 	/**
@@ -117,8 +123,8 @@ public class Move implements IMove {
 		// Determinar número de tiros fora do tabuleiro
 		int outsideShots = Game.NUMBER_SHOTS - validShots - repeatedShots;
 
-		if (verbose) {
-			// Construção da mensagem de saída
+		// Construção da mensagem de saída (guardada para o Diário de Bordo do LLM)
+		{
 			StringBuilder output = new StringBuilder();
 
 			if (validShots == 0 && repeatedShots > 0) {
@@ -160,7 +166,9 @@ public class Move implements IMove {
 				output.append(msg("move.outside", outsideShots));
 			}
 
-			System.out.println(msg("move.header", this.number, output));
+			this.summary = output.toString();
+			if (verbose)
+				System.out.println(msg("move.header", this.number, output));
 		}
 
 		// Criar o mapa para o JSON (chaves e nomes fixos do protocolo de comunicação com o LLM,

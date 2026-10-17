@@ -32,5 +32,11 @@ public interface IMove {
 
 	List<IGame.ShotResult> getShotResults();
 
+	/**
+	 * @return a short text with the result of this move (e.g. "3 tiros válidos: 1 Barca ao fundo + 2 tiros na água"),
+	 *         filled in by {@link #processEnemyFire(boolean)}; empty before that
+	 */
+	String getSummary();
+
 	String processEnemyFire(boolean verbose);
 }

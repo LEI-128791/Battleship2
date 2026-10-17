@@ -138,93 +138,163 @@ The program answers with the JSON produced by `Move.processEnemyFire`. It always
 
 ### Final strategy prompt
 
-Designed so that weaker models also play well, and tested against the same fixed fleets (loaded with `lefrota`) so luck does not hide the differences. Every answer must have 3 parts (state sheet, written check of each shot, JSON volley), shown in a full example. Searching follows a precomputed list. Hunting uses one rule taken from a simulator of a perfect player: list every possible position of each hit ship and fire at the cells that appear in the most positions. Every volley still has exactly 3 shots. Results on the same fleets: Claude Haiku averaged **22.7 volleys** (22, 23, 23), against 25.3 with the previous version; Claude Opus needed **22** on fleet 2 (27 before). A simulated perfect player needs about 21–22 on these fleets. See [JOGO_CONTRA_LLM.md](JOGO_CONTRA_LLM.md).
+**Version 2.** With version 1 the LLM needed 31–34 volleys against our program (ChatGPT and Gemini games logged in `src/main/java/battleship/chatgpt1`, `chatgpt2`, `gemini1`, `gemini2`): it forgot old results, its 10x10 text map got corrupted, and it went back to searching while a hit ship was still afloat. Version 2 fixes this:
 
-**Copy & paste tip:** after each `rajada`, the program also prints a single line to paste into the chat: the JSON response, the list of every shot the LLM has already fired (grouped by row) and a short reminder of the answer format. It only repeats the LLM's own shots, so it gives away nothing about the fleet, but it means the LLM never has to remember them.
+- The program now pastes the full **logbook** (every volley with its result) in each answer, so the LLM rebuilds its state from it instead of from memory.
+- No more map: the LLM writes 4 short lists (FALTAM, AFUNDADOS, ALVOS ABERTOS, RAJADA).
+- A fixed decision order: hunt (CAÇA), then test an ambiguous hit one candidate at a time (TESTE), and only then search (PROCURA).
+- 4 complete few-shot examples of the hard cases, plus ready-made correction messages to paste when it makes a mistake.
+
+A simulator that follows these rules exactly needs 22.8 volleys on average (80% of games between 20 and 25, 400 random fleets). The full rationale and the correction messages are in [PROMPT_ESTRATEGIA.md](PROMPT_ESTRATEGIA.md).
+
+**Copy & paste tip:** after each `rajada`, the program prints a single line to paste into the chat: the JSON response, the logbook (every volley and its result), the list of every shot already fired (grouped by row) and a short reminder of the answer format. It only repeats what the LLM already received, so it gives away nothing about the fleet.
+
+**All the messages to send to the LLM, in order** (rules, Galleon checks, protocol, strategy) are in [PROMPTS_GEMINI.md](PROMPTS_GEMINI.md).
 
 ```text
-Considere agora a seguinte tática de geração de rajadas de tiros. Objetivo: afundar os
-11 navios inimigos (25 casas) no menor número de rajadas. Cada rajada tem SEMPRE 3 tiros.
+Considere agora a seguinte tática de geração de rajadas de tiros. Objetivo: afundar os 11 navios
+inimigos (25 casas) no MENOR número de rajadas. Cada rajada tem SEMPRE 3 tiros.
 
-########## FORMATO OBRIGATÓRIO DE CADA RESPOSTA (3 partes, sempre, sem exceções) ##########
-1) FICHA
-   Tiros: copie a lista "Tiros já disparados" que vem com cada resposta do inimigo.
-   Mapa:  10 linhas (A a J) x 10 colunas, com X = acerto, ? = acerto possível,
-          # = navio afundado, ~ = água, . = desconhecido.
-   Faltam: navios ainda por afundar.
-   Hipóteses: posições possíveis dos navios atingidos ou afundados que ainda são dúvida.
-2) VERIFICAÇÃO — uma linha por tiro: "C5: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM"
-3) RAJADA — só o JSON, no fim:
-   { [ {"row": "C", "column": 5}, {"row": "F", "column": 2}, {"row": "I", "column": 7} ] }
-Uma resposta sem as 3 partes está errada. Se um tiro falhar a VERIFICAÇÃO, troque-o.
+========== MEMÓRIA: O DIÁRIO DE BORDO ==========
+Cada resposta minha traz o JSON, o "Diário de Bordo" (todas as rajadas, com os 3 tiros e o resultado)
+e os "Tiros já disparados". O Diário é a verdade: em cada jogada, reconstrua tudo a partir dele e
+não da sua memória. A resposta diz o resultado da rajada em conjunto, NÃO diz qual tiro acertou.
 
-########## NAVIOS ##########
-Barca 1 · Caravela 2 · Nau 3 (x2) · Fragata 4 · Galeão 5. Caravelas, Naus e Fragata são linhas
-retas (horizontal ou vertical). O Galeão só tem estas 4 formas (# = navio):
+========== NAVIOS ==========
+Barca 1 · Caravela 2 (x3) · Nau 3 (x2) · Fragata 4 · Galeão 5 (x1). Barcas x4.
+Caravela, Nau e Fragata são linhas retas (horizontal ou vertical). O Galeão é um T:
   Norte    Sul      Este     Oeste
   # # #    . # .    . . #    # . .
   . # .    . # .    # # #    # # #
   . # .    # # #    . . #    # . .
 Os navios NUNCA se tocam, nem na diagonal: as 8 casas à volta de um navio são água.
 
-########## LER A RESPOSTA ##########
-a) Tiros que afundaram navios = validShots − missedShots − soma dos "hits"
-   (é um número de TIROS: 2 tiros podem afundar 1 só navio).
-b) "hitsOnBoats" com acerto e não sabe em que tiro? Marque "?" nos tiros dessa rajada que
-   ainda podem ser esse navio.
-c) "sunkBoats": navio afundado. Não o cace. Junte as casas dele, marque "#" e o halo "~".
-   Se houver dúvida sobre onde estava, escreva as hipóteses e só marque "~" onde for água
-   em TODAS. Uma Barca afundada não precisa de mais tiros.
-d) Só marque "~" onde disparou e deu água, ou no halo de um navio afundado.
-e) Confirme: nenhum navio pode ter mais acertos do que o seu tamanho. Se não bater certo,
-   corrija as hipóteses antes de disparar.
+========== FORMATO DE CADA RESPOSTA (sempre estas 4 partes) ==========
+1) FALTAM: navios ainda a flutuar.
+2) AFUNDADOS: cada navio afundado com as casas CERTAS dele (ex.: "Fragata F2 F3 F4 F5").
+   Se não sabe as casas: "Barca (A3 ou A7 ou G5)".
+3) ALVOS ABERTOS: cada navio atingido e ainda a flutuar, por exemplo:
+   "Nau — certo: H8; mais 1 casa em H7, H9 ou G8"  ou  "Nau — 1 acerto em H8, E3 ou C9 (TESTE)".
+   Se não houver nenhum, escreva "nenhum".
+4) RAJADA: os 3 tiros, cada um com UMA razão curta ("H9 — caça Nau, Este de H8"). Depois:
+   "Verificação: nenhum tiro está nos Tiros já disparados nem encostado a uma casa certa de AFUNDADOS."
+   Por fim, estas 2 linhas com os mesmos 3 tiros (a 2.ª é o comando do jogo):
+   { [ {"row": "H", "column": 9}, {"row": "E", "column": 4}, {"row": "C", "column": 8} ] }
+   rajada H9 E4 C8
 
-########## ESCOLHER OS 3 TIROS ##########
-CAÇA — se houver acertos (X ou ?) de navios ainda por afundar:
-1. Em "Hipóteses", escreva TODAS as posições possíveis (casas exatas) de cada navio atingido.
-   Uma posição só é possível se respeitar a forma e o tamanho do navio, os acertos, a água,
-   o halo dos navios afundados e as contagens de TODAS as respostas anteriores.
-2. Conte em quantas hipóteses aparece cada casa "." e dispare nas 3 casas que aparecem em
-   MAIS hipóteses. Uma casa que aparece em todas completa o navio de certeza.
-3. Se houver menos de 3 casas úteis, complete com a lista de PROCURA.
-PROCURA — se não houver nenhum navio atingido por afundar: percorra a lista pela ordem,
-saltando casas já disparadas, "~" ou ao lado de um "#":
+========== ORDEM DE DECISÃO (por esta ordem, sem exceções) ==========
+1. CAÇA — há um ALVO com pelo menos uma casa CERTA? Os 3 tiros vão para ele.
+2. TESTE — há um ALVO só com candidatos (acerto num de vários tiros)? Os 3 tiros testam um candidato.
+3. PROCURA — só se não houver nenhum ALVO ABERTO.
+Se a CAÇA ou o TESTE não dão 3 tiros úteis, complete com PROCURA longe do alvo (3 ou mais casas).
+Nunca abandone um ALVO ABERTO para ir procurar: um acerto esquecido custa muitas rajadas.
+
+========== CAÇA ==========
+C1. Uma casa certa X: dispare nos vizinhos de X (Norte, Sul, Este, Oeste) que ainda estão livres.
+    Nunca nas diagonais de X: são água (só o Galeão, por ser um T, foge a esta regra).
+C2. Duas ou mais casas certas em linha: dispare só nessa linha, na casa seguinte de cada ponta
+    (e na seguinte a essa, se sobrar um tiro). Nunca ao lado da linha.
+C3. Um acerto num de vários vizinhos (ex.: "1 tiro na Nau" depois de H7 H9 G8 à volta de H8):
+    o navio passa por X e por um deles. Dispare na casa seguinte em linha de cada hipótese
+    (H6 para H7, H10 para H9, F8 para G8). Não precisa de saber qual foi: o "ao fundo" chega sozinho.
+C4. Use o tamanho: um navio nunca tem mais acertos do que casas. Uma Nau com 2 acertos precisa de
+    mais 1; quando a resposta disser "Nau ao fundo", pare de disparar nesse alvo.
+C5. Galeão: se as casas certas não estão em linha, ou a linha já tem 3 e o navio não afundou,
+    complete uma das 4 formas do T desenhadas acima.
+
+========== TESTE (acerto ambíguo numa rajada de PROCURA) ==========
+T1. Os candidatos são os tiros dessa rajada que não são água certa. Risque os que não podem ser esse
+    navio: o tipo não cabe lá (falta espaço livre em linha para o tamanho dele) ou estão encostados
+    a uma casa certa de um AFUNDADO.
+T2. Teste o candidato com mais vizinhos livres: dispare 3 dos vizinhos dele (Norte, Sul, Este, Oeste).
+T3. A resposta tem acerto nesse tipo de navio? Então o candidato era o navio: passa a CAÇA com
+    "certo: <candidato>; mais 1 casa em <os 3 vizinhos>" (regra C3). Os outros candidatos dessa
+    rajada de PROCURA eram água, se ela só teve 1 acerto.
+    Não tem acerto? Esse candidato era (quase de certeza) água: risque-o e teste o seguinte.
+    Se só sobrar 1 candidato, é certo: passa a CAÇA.
+
+========== AFUNDADOS ==========
+A1. "X ao fundo" e havia um ALVO ABERTO desse tipo: o navio afundado é esse alvo. Escreva em
+    AFUNDADOS as casas que são certas. A partir daí nunca dispare nas 8 casas à volta delas.
+A2. "Barca ao fundo" numa rajada de PROCURA: não sabe qual dos tiros foi. Escreva
+    "Barca (A3 ou A7 ou G5)" e não dispare à volta. A Barca está acabada: não precisa de mais tiros.
+A3. Uma rajada pode ter, ao mesmo tempo, um navio ao fundo e um acerto noutro navio. Trate cada um
+    pela sua regra.
+
+========== PROCURA ==========
+Percorra a lista por ordem e use as primeiras casas que estejam livres. Salte casas já disparadas,
+encostadas (mesmo na diagonal) a uma casa certa de navio, ou que sejam candidatos de um TESTE.
    Fase 1: H8 E3 C9 | I3 B10 F10 | C5 J2 I7 | A3 A7 G5 | B6 F2 G9 | D4 D8 H4 | J6 B2 F6 | E7 G1 C1 | J10
    Fase 2: I9 G3 A5 | H2 D10 B4 | E9 I1 A9 | C7 H6 H10 | D6 D2 I5 | E1 E5 A1 | G7 B8 C3 | F4 F8 J4 | J8
-   Fase 3 (só faltam Barcas): escreva as casas "." onde ainda pode haver uma Barca (sem tocar
-   em nenhum navio, em nenhuma hipótese) e dispare nelas, começando pelas que não dependem
-   de nenhuma dúvida.
-ÚLTIMA RAJADA: se faltarem menos de 3 casas possíveis, os tiros que sobram podem ir para
-casas "~" (é a única exceção permitida).
+   Fase 3 (lista acabada ou só faltam Barcas): escolha casas livres que não toquem em nenhum navio,
+   começando pelas zonas maiores sem tiros.
+ÚLTIMA RAJADA: se faltarem menos de 3 casas onde ainda pode haver navio, complete os 3 tiros com
+casas já disparadas (é a única exceção a "nunca repetir").
 
-########## EXEMPLO DE UMA RESPOSTA COMPLETA ##########
-(depois de: Rajada 1 = H8 E3 C9 → 1 acerto numa Nau, 2 água)
-1) FICHA
-   Tiros: [C: 9 | E: 3 | H: 8]
-   Mapa:
-     1 2 3 4 5 6 7 8 9 10
-   A . . . . . . . . . .
-   B . . . . . . . . . .
-   C . . . . . . . . ? .
-   D . . . . . . . . . .
-   E . . ? . . . . . . .
-   F . . . . . . . . . .
-   G . . . . . . . . . .
-   H . . . . . . . ? . .
-   I . . . . . . . . . .
-   J . . . . . . . . . .
-   Faltam: Galeão, Fragata, Nau x2, Caravela x3, Barca x4
-   Hipóteses: o acerto na Nau foi em H8, E3 ou C9. As posições possíveis da Nau passam
-   por uma destas casas; as que aparecem em mais posições são os vizinhos H7, E4 e C8.
-2) VERIFICAÇÃO
-   H7: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM
-   E4: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM
-   C8: dentro do mapa SIM | não está nos Tiros SIM | não é ~ SIM
-3) RAJADA
-   { [ {"row": "H", "column": 7}, {"row": "E", "column": 4}, {"row": "C", "column": 8} ] }
+========== EXEMPLOS ==========
+--- Exemplo A: acerto ambíguo na procura -> TESTE ---
+Recebe: Diário de Bordo: [R1 H8 E3 C9 = 3 tiros válidos: 1 tiro num(a) Nau + 2 tiros na água]
+Responde:
+1) FALTAM: Galeão, Fragata, Nau x2, Caravela x3, Barca x4
+2) AFUNDADOS: nenhum
+3) ALVOS ABERTOS: Nau — 1 acerto em H8, E3 ou C9 (TESTE). Os 3 têm 4 vizinhos livres; testo H8.
+4) RAJADA:
+   H7 — teste de H8, Oeste
+   H9 — teste de H8, Este
+   G8 — teste de H8, Norte
+   Verificação: nenhum tiro está nos Tiros já disparados nem encostado a uma casa certa de AFUNDADOS.
+   { [ {"row": "H", "column": 7}, {"row": "H", "column": 9}, {"row": "G", "column": 8} ] }
+   rajada H7 H9 G8
 
-Se a sua frota for toda afundada, declare a derrota com honra. Se o inimigo se render com
-todos os navios no fundo do oceano, seja um vencedor magnânimo!
+--- Exemplo B: o teste acerta -> CAÇA ---
+Recebe: Diário de Bordo: [R1 H8 E3 C9 = 3 tiros válidos: 1 tiro num(a) Nau + 2 tiros na água;
+R2 H7 H9 G8 = 3 tiros válidos: 1 tiro num(a) Nau + 2 tiros na água]
+Responde:
+1) FALTAM: Galeão, Fragata, Nau x2, Caravela x3, Barca x4
+2) AFUNDADOS: nenhum
+3) ALVOS ABERTOS: Nau — certo: H8; mais 1 casa em H7, H9 ou G8. (E3 e C9 eram água: a R1 só teve
+   1 acerto.) Hipóteses da Nau (3 casas): H6 H7 H8, H8 H9 H10, F8 G8 H8 ou G8 H8 I8.
+4) RAJADA:
+   H6 — caça Nau, a seguir a H7
+   H10 — caça Nau, a seguir a H9
+   F8 — caça Nau, a seguir a G8
+   Verificação: nenhum tiro está nos Tiros já disparados nem encostado a uma casa certa de AFUNDADOS.
+   { [ {"row": "H", "column": 6}, {"row": "H", "column": 10}, {"row": "F", "column": 8} ] }
+   rajada H6 H10 F8
+
+--- Exemplo C: só 1 casa útil para a caça; o navio vai ao fundo -> AFUNDADOS e PROCURA ---
+Antes: ALVOS ABERTOS: Fragata — certo: C5 C6 C7 (C4 já foi água). Só sobra uma ponta: C8.
+Por isso a rajada foi C8 (caça) + I3 e B10 (procura, longe da Fragata).
+Recebe: Diário de Bordo: [...; R6 C8 I3 B10 = 3 tiros válidos: 1 Fragata ao fundo + 2 tiros na água]
+Responde:
+1) FALTAM: Galeão, Nau x2, Caravela x3, Barca x4
+2) AFUNDADOS: Fragata C5 C6 C7 C8 (a Fragata tem 4 casas; a única que faltava era C8, por isso
+   I3 e B10 foram água)
+3) ALVOS ABERTOS: nenhum
+4) RAJADA: PROCURA. Salto C5 (é a Fragata) e qualquer casa encostada a C5 C6 C7 C8.
+   F10 — procura, Fase 1
+   J2 — procura, Fase 1
+   I7 — procura, Fase 1
+   Verificação: nenhum tiro está nos Tiros já disparados nem encostado a uma casa certa de AFUNDADOS.
+   { [ {"row": "F", "column": 10}, {"row": "J", "column": 2}, {"row": "I", "column": 7} ] }
+   rajada F10 J2 I7
+
+--- Exemplo D: fim do jogo, só falta 1 Barca ---
+Responde:
+1) FALTAM: Barca x1
+2) AFUNDADOS: (todos os outros, com as casas certas)
+3) ALVOS ABERTOS: nenhum
+4) RAJADA: PROCURA, Fase 3. Casas livres que não tocam em nenhum navio: B9, E1, J5 e J6.
+   Escolho as 3 que estão mais longe de tudo.
+   B9 — procura, só cabe Barca
+   E1 — procura, só cabe Barca
+   J5 — procura, só cabe Barca
+   Verificação: nenhum tiro está nos Tiros já disparados nem encostado a uma casa certa de AFUNDADOS.
+   { [ {"row": "B", "column": 9}, {"row": "E", "column": 1}, {"row": "J", "column": 5} ] }
+   rajada B9 E1 J5
+
+Se a sua frota for toda afundada, declare a derrota com honra. Se o inimigo se render com todos os
+navios no fundo do oceano, seja um vencedor magnânimo!
 ```
 
 > Few-shot examples used to teach the protocol, and the exact prompts used to set up the game, are in the assignment statement (Sprint – Parte 2).

@@ -408,9 +408,10 @@ public class Game implements IGame
 	}
 
 	/**
-	 * Builds the single line to paste into the LLM chat: the JSON response, every shot fired so far
-	 * (grouped by row, so the LLM never has to remember them) and a short reminder of the answer format.
-	 * It only repeats the LLM's own shots, so it gives no information about the fleet.
+	 * Builds the single line to paste into the LLM chat: the JSON response, the logbook (every volley
+	 * with its result), every shot fired so far (grouped by row, so the LLM never has to remember them)
+	 * and a short reminder of the answer format.
+	 * It only repeats what the LLM already received, so it gives no information about the fleet.
 	 *
 	 * @param json the JSON response produced by {@link Move#processEnemyFire(boolean)}
 	 * @return the text to paste into the chat
@@ -421,6 +422,14 @@ public class Game implements IGame
 			for (IPosition p : m.getShots())
 				if (p.isInside())
 					byRow.computeIfAbsent(p.getClassicRow(), r -> new ArrayList<>()).add(p.getClassicColumn());
+
+		StringJoiner diary = new StringJoiner("; ");
+		for (IMove m : alienMoves) {
+			StringJoiner shots = new StringJoiner(" ");
+			for (IPosition p : m.getShots())
+				shots.add(p.toString());
+			diary.add("R" + m.getNumber() + " " + shots + " = " + m.getSummary());
+		}
 
 		StringJoiner fired = new StringJoiner(" | ");
 		for (Map.Entry<Character, List<Integer>> row : byRow.entrySet()) {
@@ -438,7 +447,8 @@ public class Game implements IGame
 		}
 
 		return Messages.get("llm.copy") + System.lineSeparator()
-				+ compact + " " + MessageFormat.format(Messages.get("llm.fired"), fired.toString())
+				+ compact + " " + MessageFormat.format(Messages.get("llm.diary"), diary.toString())
+				+ " " + MessageFormat.format(Messages.get("llm.fired"), fired.toString())
 				+ " " + Messages.get("llm.reminder");
 	}
 
