@@ -21,6 +21,7 @@
 - [Key Features](#-key-features)
 - [Student Contributions](#-student-contributions)
 - [AI Opponent (LLM)](#-ai-opponent-llm)
+- [Youtube video showcase](#-Youtube-showcase)
 - [Technical Stack](#-technical-stack)
 - [Installation & Setup](#-installation--setup)
 - [Code Architecture](#-code-architecture)
@@ -299,6 +300,11 @@ navios no fundo do oceano, seja um vencedor magnânimo!
 
 > Few-shot examples used to teach the protocol, and the exact prompts used to set up the game, are in the assignment statement (Sprint – Parte 2).
 
+---
+
+---
+## ▶ Youtube showcase
+https://youtu.be/nRFuIBMP_yg
 ---
 
 ## 🛠 Technical Stack
