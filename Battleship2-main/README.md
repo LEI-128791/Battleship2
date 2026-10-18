@@ -273,7 +273,7 @@ navios no fundo do oceano, seja um vencedor magnânimo!
 
 ---
 ## ▶ Youtube showcase
-https://youtu.be/nRFuIBMP_yg
+[https://youtu.be/iqsdS-GefiI]
 ---
 
 ## 🛠 Technical Stack
