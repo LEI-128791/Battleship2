@@ -232,7 +232,7 @@ navios no fundo do oceano, seja um vencedor magnânimo!
 4. Repita até o programa mostrar `Estado da Frota: 0 a flutuar`.
 
 Resultados dos testes: versão 1, 31 a 34 rajadas; versão 2, 32 a 33 sem acabar o jogo; versão 3 sem
-as 2 últimas regras, ChatGPT 28 e Claude Haiku 34; **versão 3 final, Claude Haiku 25**. O melhor
+as 2 últimas regras, ChatGPT 28 e Claude Haiku 34; **versão 3 final, Claude Sonnet 22 e Claude Haiku 25**. O melhor
 resultado possível (cerca de 22–23) só se atinge se o LLM souber onde acertou cada tiro, e o JSON do
 guião só diz quantos acertaram. Os detalhes e as mensagens de correção estão no
 [PROMPT_ESTRATEGIA.md](PROMPT_ESTRATEGIA.md).

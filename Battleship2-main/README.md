@@ -21,11 +21,13 @@
 - [Key Features](#-key-features)
 - [Student Contributions](#-student-contributions)
 - [AI Opponent (LLM)](#-ai-opponent-llm)
-- [Youtube video showcase](#-Youtube-showcase)
+- [Youtube video showcase](#-youtube-showcase)
 - [Technical Stack](#-technical-stack)
 - [Installation & Setup](#-installation--setup)
 - [Code Architecture](#-code-architecture)
+- [Documentation](#-documentation)
 - [Roadmap](#-roadmap)
+- [Testing](#-testing)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -65,6 +67,9 @@ During the game, players fire salvos at selected coordinates. The game reports w
 | **Graphical Interface (GUI)** | JavaFX interface with two boards, interactive shot selection, game controls and results display. | ✅ |
 | **Game Simulation** | Simulate a game using the terminal command `simula` or the corresponding GUI functionality. | ✅ |
 | **PDF Game-History Export** | Export recorded moves, shot coordinates and outcomes to a PDF report. The TUI supports the `exportapdf` command; end-to-end GUI validation is pending. | 🚧 |
+| **Turn Timer** | The graphical interface shows the elapsed time of the current turn and the duration of the last turn. | ✅ |
+| **Internationalisation** | The game messages exist in Portuguese and English (`pt`/`en`), chosen when the terminal interface starts and used by the GUI. | ✅ |
+| **AI Opponent (LLM)** | An LLM plays against the game by exchanging JSON volleys; the prompts and the strategy are documented below. | ✅ |
 | **REST API** | Spring Boot server used for communication between the graphical client and the game. | ✅ |
 | **AI Shot Strategy** | AI shot-selection functionality provided by the server-side strategy component. | ✅ |
 
@@ -106,11 +111,23 @@ The graphical interface includes an export workflow with a file chooser; its end
 
 The export functionality is implemented in a shared `PdfReportExporter` class, allowing both interfaces to reuse the same PDF-generation logic.
 
+### 3. Turn Timer — [Issue #5](https://github.com/LEI-128791/Battleship2/issues/5)
+
+The graphical interface now shows two extra statistics next to the shots, hits and accuracy: the **turn time** (a `mm:ss` clock for the current turn) and the **last turn** (how long the previous turn took, in seconds). The timer uses `commons-lang3`.
+
+### 4. Internationalisation — [Issue #7](https://github.com/LEI-128791/Battleship2/issues/7)
+
+All the texts of the terminal and graphical interfaces were moved out of the code into `messages_pt.properties` and `messages_en.properties`, read by the `Messages` class. The terminal interface asks for the language (`pt`/`en`) when it starts. The JSON keys and ship names used to talk to the LLM do not change with the language.
+
+### 5. AI Opponent (LLM)
+
+An LLM can play against the game by sending volleys and receiving the results as JSON. The work covers the prompts that teach the protocol, a strategy prompt and its test results, and the line the program prints for copy & paste into the chat. See [AI Opponent (LLM)](#-ai-opponent-llm).
+
 ---
 
 ## 🤖 AI Opponent (LLM)
 
-We trained an LLM to play Battleship against our program using **few-shot prompting**, and tested the prompts with Gemini, ChatGPT and Claude Haiku. All the prompts, in the order they are sent, are in [PROMPTS_GEMINI.md](PROMPTS_GEMINI.md). Shots and results are exchanged as JSON (copy & paste between the LLM and the console).
+We trained an LLM to play Battleship against our program using **few-shot prompting**, and tested the prompts with Gemini, ChatGPT, Claude Haiku and Claude Sonnet. All the prompts, in the order they are sent, are in [PROMPTS_GEMINI.md](PROMPTS_GEMINI.md). Shots and results are exchanged as JSON (copy & paste between the LLM and the console).
 
 ### Communication protocol
 
@@ -146,7 +163,7 @@ The program answers with the JSON produced by `Move.processEnemyFire`. It always
 | Version 1 (10x10 map + written check) | 31–34 (ChatGPT, Gemini) |
 | Version 2 (logbook + CAÇA/TESTE/PROCURA) | 32–33 without finishing (Gemini, ChatGPT) |
 | Version 3 without the last 2 rules | 28 (ChatGPT), 34 (Claude Haiku) |
-| **Version 3 (final)** | **25 (Claude Haiku)** |
+| **Version 3 (final)** | **22 (Claude Sonnet), 25 (Claude Haiku)** |
 
 The program does not do any deduction and does not change the JSON: it only repeats, in the line to paste, what the LLM has already received.
 
@@ -165,7 +182,7 @@ Each rule fixes a problem we saw in the tests:
 
 #### Limit
 
-The best possible result (about 22–23 volleys) is only reachable if the LLM knows **where each shot hit**. The JSON defined in the assignment only says how many shots hit each type of ship, not which ones. So the LLM can never be sure where some sunk ships were (above all the Barcas sunk while searching, "one of 3 shots"), and it has to leave part of the water around them unexcluded. In our simulator (300 random fleets), a player who knew where every sunk ship was needed 22.7 volleys; with the assignment's protocol and safe rules followed exactly, 26.6. A model with reasoning can get closer to the limit. Details and correction messages: [PROMPT_ESTRATEGIA.md](PROMPT_ESTRATEGIA.md).
+The best possible result (about 22–23 volleys) is only reachable if the LLM knows **where each shot hit**. The JSON defined in the assignment only says how many shots hit each type of ship, not which ones. So the LLM can never be sure where some sunk ships were (above all the Barcas sunk while searching, "one of 3 shots"), and it has to leave part of the water around them unexcluded. In our simulator (300 random fleets), a player who knew where every sunk ship was needed 22.7 volleys; with the assignment's protocol and safe rules followed exactly, 26.6. In the real tests with the final prompt, Claude Sonnet needed 22 volleys and Claude Haiku 25 (one game per model, with different fleets, so luck of the fleet also counts). Details and correction messages: [PROMPT_ESTRATEGIA.md](PROMPT_ESTRATEGIA.md).
 
 **Copy & paste tip:** after each `rajada`, the program prints a single line to paste into the chat: the JSON response, the logbook (every volley and its result), the shots already fired and the cells still free (grouped by row), and a short reminder of the method. It only repeats what the LLM already received, so it gives away nothing about the fleet.
 
@@ -273,7 +290,7 @@ navios no fundo do oceano, seja um vencedor magnânimo!
 
 ---
 ## ▶ Youtube showcase
-[https://youtu.be/iqsdS-GefiI]
+<https://youtu.be/iqsdS-GefiI>
 ---
 
 ## 🛠 Technical Stack
@@ -379,7 +396,7 @@ graph TD
 
 ## 📚 Documentation
 
-The project includes Javadoc documentation in the [`docs/`](docs/) directory.
+The project includes Javadoc documentation in the [`docs/`](../docs/) directory.
 
 The documentation describes the project's classes, methods and interfaces, providing a reference for understanding and extending the implementation.
 

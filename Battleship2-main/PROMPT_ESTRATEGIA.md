@@ -15,7 +15,7 @@ casas livres. Tudo isto é informação que o LLM já recebeu.
 | v1 (mapa 10x10 + verificação) | ChatGPT 33 e 34, Gemini 31 rajadas | Esquecia resultados, o mapa estragava-se, varria o tabuleiro |
 | v2 (Diário + 4 listas + CAÇA/TESTE/PROCURA) | Gemini 33+ (ficou 1 Nau por afundar), ChatGPT 32+ (desistiu) | Formato cumprido, mas: alvos esquecidos, candidatos dados como certos sem teste, Galeão em 8 rajadas, nenhum halo |
 | v3 sem as 2 últimas regras | ChatGPT 28, Claude Haiku 34 rajadas | Tiros encostados a navios já afundados (27 no Haiku, 14 no ChatGPT) e 9 rajadas para as 2 últimas Barcas |
-| **v3 final (+ REGRA DAS BARCAS + VERIFICAÇÃO)** | **Claude Haiku 25 rajadas** | — |
+| **v3 final (+ REGRA DAS BARCAS + VERIFICAÇÃO)** | **Claude Sonnet 22, Claude Haiku 25 rajadas** | — |
 
 ## O que o simulador mostrou
 
@@ -38,9 +38,11 @@ regras seguidas à letra:
   a parte que se pode deduzir com segurança.
 - Uma versão do halo que só usava as casas da caça foi rejeitada, porque chegava a marcar água onde
   havia navio.
-- **Expectativa:** um modelo fraco que siga tudo fica perto das 26–27; um modelo real erra mais.
-  Para ficar sempre nas 26 ou menos, use um modelo com raciocínio (Gemini em modo de raciocínio,
-  ChatGPT com "Pensar"): cerca de 23–25.
+- **Expectativa:** o simulador, que segue as regras sem nenhum erro, dá cerca de 26–27. Nos testes
+  reais com o prompt final, o Claude Sonnet fez 22 e o Claude Haiku 25 (um jogo por modelo, com
+  frotas diferentes: o resultado depende também da sorte da frota). Um modelo que erre a FICHA ou a
+  água certa fica acima disso, e nesse caso use as mensagens de correção. Para o resultado ser
+  estável, use um modelo com raciocínio (Gemini em modo de raciocínio, ChatGPT com "Pensar").
 
 ---
 
