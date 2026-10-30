@@ -21,7 +21,7 @@ jobs:
       - uses: JetBrains/qodana-action@v2026.2
         with:
           # O projeto Maven esta na subpasta Battleship2-main.
-          args: --project-dir Battleship2-main --config qodana-83590.yaml --profile-path .qodana/profiles/profile-83590.yaml
+          args: --project-dir Battleship2-main --config qodana-83590.yaml
           pr-mode: false
           upload-result: true
           use-annotations: true

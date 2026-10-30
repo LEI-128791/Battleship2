@@ -11,6 +11,8 @@
 
 Linter: `jetbrains/qodana-jvm-community:2026.2` · JDK do projeto: 21 · Action: `JetBrains/qodana-action@v2026.2`.
 
+**Como o perfil é ligado:** o `qodana-83590.yaml` usa `profile.base.name: empty` (nenhuma inspeção ligada) e `imports` para importar o perfil `.qodana/profiles/profile-83590.yaml`, que liga só a inspeção do Long Method. Na versão 2026.2 do linter, o formato da Listing 1 da ficha (`profile.path`) e o `profile.base.path` não aplicaram o perfil (o Qodana usava o perfil `Default`, com 244 problemas). O `--profile-path` também não. Só o `imports` funcionou, confirmado a correr o Qodana localmente.
+
 ## Tabela de mapeamento (passo 4)
 
 | Cheiro (Fowler) | Inspeção no IDE | ID da inspeção | Métrica / limiar | Limitações |
