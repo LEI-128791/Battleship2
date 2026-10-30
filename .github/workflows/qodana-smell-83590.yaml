@@ -11,6 +11,7 @@ permissions:
   pull-requests: write
 jobs:
   qodana:
+    name: qodana-83590
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
