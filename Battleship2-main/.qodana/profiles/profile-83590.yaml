@@ -1,0 +1,16 @@
+# 83590 - Valentyna Rusinova
+# Cheiro escolhido: Long Method (Fowler)
+profile:
+  base:
+    name: empty
+
+  inspections:
+    - inspection: NonCommentSourceStatements
+      enabled: true
+      options:
+        # Maximo de instrucoes (statements) por metodo. Valor por omissao do IDE: 30.
+        # Valor atual 75: o maior metodo do projeto (Move.processEnemyFire) tem 71
+        # instrucoes, por isso o gate passa no codigo atual e falha quando se introduz
+        # um metodo maior. Com 20 ha 21 metodos acima do limiar; com 30 ha 13.
+        # Referencia do livro: LOC/Method "muito alto" = 19,5 (Tabela 2.2, p.16).
+        m_limit: 75

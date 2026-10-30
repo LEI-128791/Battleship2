@@ -1,0 +1,28 @@
+# 83590 - Valentyna Rusinova
+name: Qodana smell gate 83590
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: JetBrains/qodana-action@v2026.2
+        with:
+          # O projeto Maven esta na subpasta Battleship2-main.
+          # Os argumentos da action sao separados por virgulas.
+          args: --project-dir,Battleship2-main,--config,qodana-83590.yaml
+          pr-mode: false
+          use-annotations: true
+          post-pr-comment: true
