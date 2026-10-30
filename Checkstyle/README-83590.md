@@ -18,15 +18,17 @@ Action usada: `dbelyaev/action-checkstyle@v4` (reporter `github-pr-check`, `leve
 
 | Execução | Resultado | Ligação |
 |---|---|---|
-| Com a violação (PR) | Gate falha | _(colar a ligação da execução)_ |
-| Depois de corrigir | Gate passa | _(colar a ligação da execução)_ |
+| Com a violação (PR #14) | Gate **falha** | https://github.com/LEI-128791/Battleship2/actions/runs/41137004775 |
+| Depois de corrigir (PR #14) | Gate **passa** | https://github.com/LEI-128791/Battleship2/actions/runs/41138211346 |
 
-Violação provocada: _(indicar o ficheiro, a linha e o nome, por exemplo `maxShips` em vez de `MAX_SHIPS`)_.
+Pull request: https://github.com/LEI-128791/Battleship2/pull/14 (ramo `teste-checkstyle-83590`, fechado sem merge).
+
+Violação provocada: `Battleship2-main/src/main/java/battleship/ConstantNameDemo.java`, linha 9, constante `maxShips`. A anotação do check (*reviewdog [checkstyle] report*, também visível em *Files changed*) indica o ficheiro, a linha e a mensagem: `Name 'maxShips' must match pattern '^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$'.` Correção: a constante foi renomeada para `MAX_SHIPS`. As violações aparecem como anotações do check e não no texto do log do job.
 
 ## Proteção do ramo `main`
 
-_(Indicar se a regra foi configurada e se o PR com a violação ficou com o merge bloqueado. A conta `LEI-83590` não tem permissão de administrador no repositório, por isso a regra depende do dono, `LEI-128791`.)_
+Não foi possível configurar a regra de proteção: a conta `LEI-83590` tem permissão de escrita (`push`), mas não de administrador, e as definições do repositório (*Settings > Branches*) só estão disponíveis para o dono, `LEI-128791`. Por isso, para já, o botão de merge do PR #14 **não ficou bloqueado** com o gate vermelho. Esta secção será atualizada quando a regra for ativada (exigir o check `checkstyle`).
 
 ## O que o Checkstyle não consegue verificar
 
-_(2 ou 3 frases, a preencher depois das execuções. Ideias: o Checkstyle só valida a forma do nome (o padrão), não se o nome é significativo ou claro (`MAX_SHIPS` e `X1` cumprem os dois a regra); não sabe se um `static final` devia mesmo ser constante, e ignora campos que não sejam `static final`, como constantes escritas em atributos de instância; e a regra só vê o código Java, não a documentação nem os testes dos nomes.)_
+O Checkstyle só valida a **forma** do nome contra o padrão, não se o nome é significativo: `MAX_SHIPS` e `X1` cumprem os dois a regra, mas só o primeiro diz o que a constante representa. A regra `ConstantName` também só se aplica a campos `static final`, por isso não sabe se uma constante devia mesmo existir, nem se um `static final` com nome em maiúsculas guarda um objeto modificável (uma lista, por exemplo) e não um valor constante. Verifica ainda apenas o código Java, e não a documentação nem a utilização correta do nome.
