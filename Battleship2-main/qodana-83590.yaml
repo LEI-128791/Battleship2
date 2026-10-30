@@ -1,0 +1,13 @@
+# 83590 - Valentyna Rusinova
+version: "1.0"
+linter: jetbrains/qodana-jvm-community:2026.2
+projectJDK: "21"
+profile:
+  base:
+    name: empty
+# O perfil de inspecao (YAML) e importado aqui. Ver .qodana/profiles/profile-83590.yaml
+imports:
+  - ".qodana/profiles/profile-83590.yaml"
+failureConditions:
+  severityThresholds:
+    any: 0
