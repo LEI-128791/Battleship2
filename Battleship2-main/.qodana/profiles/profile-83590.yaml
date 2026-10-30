@@ -1,5 +1,6 @@
 # 83590 - Valentyna Rusinova
 # Cheiro escolhido: Long Method (Fowler)
+version: "1.0"
 profile:
   base:
     name: empty

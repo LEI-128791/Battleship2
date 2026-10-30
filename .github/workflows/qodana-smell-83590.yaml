@@ -24,5 +24,6 @@ jobs:
           # Os argumentos da action sao separados por virgulas.
           args: --project-dir,Battleship2-main,--config,qodana-83590.yaml
           pr-mode: false
+          upload-result: true
           use-annotations: true
           post-pr-comment: true
