@@ -1,0 +1,22 @@
+# 83590 - Valentyna Rusinova
+name: Checkstyle gate 83590
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  checks: write
+jobs:
+  checkstyle:
+    name: checkstyle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dbelyaev/action-checkstyle@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          checkstyle_config: Checkstyle/checkstyle-83590.xml
+          reporter: github-pr-check
+          level: error
+          filter_mode: nofilter
+          fail_level: error
