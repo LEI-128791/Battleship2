@@ -21,25 +21,23 @@ Linter: `jetbrains/qodana-jvm-community:2026.2` · JDK do projeto: 21 · Action:
 
 **Valor do limiar:** o livro (*Object-Oriented Metrics in Practice*, p. 16, tabela 2.2) dá, para Java, LOC/Method de 7 (baixo), 10 (médio), 13 (alto) e 19,5 (muito alto). Comecei com 20 instruções, próximo do limiar "muito alto", mas o projeto tem 21 métodos acima disso (13 acima de 30), e o gate falhava logo no código atual. Subi o limiar para 75, porque o maior método (`Move.processEnemyFire`) tem 71 instruções, de modo que o gate passa no código atual e falha quando se introduz um método maior. A inspeção mede instruções e a tabela mede linhas, por isso é só uma aproximação.
 
-**Disponibilidade:** a página do Inspectopedia indica que a inspeção existe no Qodana for JVM 2026.2, mas não menciona o linter Community. <!-- confirmar na primeira execução -->
+**Disponibilidade:** a página do Inspectopedia indica que a inspeção existe no Qodana for JVM 2026.2, mas não menciona o linter Community. Confirmado: a inspeção `NonCommentSourceStatements` corre no `qodana-jvm-community:2026.2` (executada no GitHub Actions e localmente).
 
 ## Execuções do passo 9 (provocar o cheiro)
 
 | Execução | Resultado | Ligação |
 |---|---|---|
-| Com o cheiro introduzido (PR) | Gate falha | _(colar a ligação da execução)_ |
-| Depois de corrigir | Gate passa | _(colar a ligação da execução)_ |
+| Com o cheiro introduzido (PR #12) | Gate **falha**: 1 problema, `Overly long method` | https://github.com/LEI-128791/Battleship2/actions/runs/41130258808 |
+| Depois de corrigir (PR #12) | Gate **passa**: 0 problemas | https://github.com/LEI-128791/Battleship2/actions/runs/41132734227 |
 
-Método provocado: _(indicar o método e o número de instruções)_.
+Pull request: https://github.com/LEI-128791/Battleship2/pull/12 (ramo `teste-long-method-83590`, fechado sem merge).
+
+Método provocado: `LongMethodDemo.longMethod()`, em `Battleship2-main/src/main/java/battleship/LongMethodDemo.java`, com **81 instruções** (limiar 75). A inspeção indica: `'longMethod' is too long (# Non-comment source statements = 81)`. Correção: o método foi substituído por `shortMethod()`, com 3 instruções.
 
 ## Proteção do ramo `main` (passo 10)
 
-_(Indicar se a regra de proteção foi configurada e se o botão de merge ficou bloqueado com o gate vermelho. Se o plano do repositório não o permitir, dizê-lo aqui.)_
+Não foi possível configurar a regra de proteção: a conta `LEI-83590` tem permissão de escrita (`push`), mas não de administrador, e as definições do repositório (*Settings > Branches*) só estão disponíveis para o dono, `LEI-128791`. O pedido foi feito ao dono do repositório. Por isso, para já, o botão de merge do PR #12 **não ficou bloqueado** com o gate vermelho. Esta secção será atualizada quando a regra for ativada (exigir o check `qodana`).
 
 ## Reflexão
 
-_(3 ou 4 frases, a preencher depois das execuções:)_
-- _O que a ferramenta detetou (que métodos, em que ficheiros)._
-- _Se houve falsos positivos ou falsos negativos._
-- _Como o resultado muda com o limiar `m_limit` (por exemplo 30 contra 20)._
-- _Limitações face à estratégia do livro (combinação de LOC e CC, limiares relativos ao sistema)._
+A inspeção `NonCommentSourceStatements` detetou o método artificial de 81 instruções logo à primeira (ficheiro e linha corretos), e no código real só dispara quando se baixa o limiar: com `m_limit` 75 não há nenhum método (o maior, `Move.processEnemyFire`, tem 71 instruções), com 30 há 13 e com 20 há 21 (por exemplo `Tasks.menu`, `BattleshipGUI.handleTurn` e `BoardView.set`), por isso o resultado é muito sensível ao limiar e o 75 foi escolhido para o gate passar no código atual. Conta instruções e não linhas ou complexidade: um método com muitas instruções simples (como o construtor de `BoardView`) é assinalado, e um com pouca extensão mas muitos ramos não seria (`Move.processEnemyFire` tem CC 37), o que dá falsos positivos e falsos negativos face ao Long Method. Face ao livro (*Object-Oriented Metrics in Practice*), o Qodana usa um único limiar absoluto e não permite combinar LOC e CC com um AND, nem limiares relativos ao sistema, pelo que é só uma aproximação. Na configuração, o formato `profile.path` da ficha e o `profile.base.path` não aplicaram o perfil (o Qodana usava o perfil por omissão, com 244 problemas), e só o `imports` no `qodana.yaml` funcionou.
