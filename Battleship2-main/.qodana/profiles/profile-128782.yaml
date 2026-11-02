@@ -1,0 +1,16 @@
+# 128782 - João Mota
+# Cheiro escolhido: Large Class (Fowler), formalizado no livro como God Class
+version: "1.0"
+profile:
+  base:
+    name: empty
+
+  inspections:
+    - inspection: ClassComplexity
+      enabled: true
+      options:
+        # Complexidade ciclomatica total da classe (soma da CC dos metodos = WMC).
+        # Valor por omissao do IDE: 80.
+        # Livro (Object-Oriented Metrics in Practice), God Class: WMC >= VERY HIGH (47).
+        # A inspecao assinala classes com complexidade ACIMA do limite, logo 46.
+        m_limit: 46
