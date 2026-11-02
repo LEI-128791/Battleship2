@@ -1,0 +1,15 @@
+# 128782 - João Mota
+version: "1.0"
+linter: jetbrains/qodana-jvm-community:2026.2
+projectJDK: "21"
+profile:
+  base:
+    name: empty
+# O perfil de inspecao (YAML) e importado aqui. Ver .qodana/profiles/profile-128782.yaml
+imports:
+  - ".qodana/profiles/profile-128782.yaml"
+failureConditions:
+  severityThresholds:
+    # Falha se houver MAIS do que N problemas (classes acima do limiar de complexidade).
+    # Valor a ajustar depois da primeira execucao (ver README-128782.md).
+    any: 3
