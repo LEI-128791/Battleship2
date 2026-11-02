@@ -11,5 +11,7 @@ imports:
 failureConditions:
   severityThresholds:
     # Falha se houver MAIS do que N problemas (classes acima do limiar de complexidade).
-    # Valor a ajustar depois da primeira execucao (ver README-128782.md).
-    any: 3
+    # 1a execucao com any: 3 falhou: o Qodana encontrou 4 God Classes no codigo atual
+    # (BattleshipGUI 117, Game 67, Ship 51, BoardView 51). Com any: 4 o gate passa no
+    # codigo atual e falha se aparecer uma 5a classe acima do limiar.
+    any: 4
