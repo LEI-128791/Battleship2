@@ -25,9 +25,24 @@ Pull request: https://github.com/LEI-128791/Battleship2/pull/14 (ramo `teste-che
 
 Violação provocada: `Battleship2-main/src/main/java/battleship/ConstantNameDemo.java`, linha 9, constante `maxShips`. A anotação do check *reviewdog [checkstyle] report* (separador *Checks* do pull request) indica o ficheiro, a linha e a mensagem: `Name 'maxShips' must match pattern '^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$'.` Correção: a constante foi renomeada para `MAX_SHIPS`. As violações aparecem como anotações do check e não no texto do log do job.
 
-## Proteção do ramo `main`
+## Proteção do ramo `main` (passo 5)
 
-Não foi possível configurar a regra de proteção: a conta `LEI-83590` tem permissão de escrita (`push`), mas não de administrador, e as definições do repositório (*Settings > Branches*) só estão disponíveis para o dono, `LEI-128791`. Por isso, para já, o botão de merge do PR #14 **não ficou bloqueado** com o gate vermelho. Esta secção será atualizada quando a regra for ativada (exigir o check `checkstyle`).
+O `main` tem uma regra de proteção que exige que os checks seguintes passem antes do merge de um pull request: `qodana-83590`, `checkstyle-83590`, `qodana-128782` e `checkstyle-128782`. A regra aplica-se a quem não é administrador do repositório.
+
+Confirmado no PR #19 (https://github.com/LEI-128791/Battleship2/pull/19, ramo `teste-gates-83590`, fechado sem merge), que continha as duas violações ao mesmo tempo:
+
+| Momento | `qodana-83590` | `checkstyle-83590` | Botão de merge |
+|---|---|---|---|
+| 1. Método longo (81 instruções) e `maxShips` | falha | falha | **bloqueado** |
+| 2. Só o método longo corrigido | passa | falha | **bloqueado** (só pelo Checkstyle) |
+| 3. Método e constante corrigidos | passa | passa | **desbloqueado** |
+
+Execuções do PR #19:
+- Momento 1: Qodana https://github.com/LEI-128791/Battleship2/actions/runs/41740509278 · Checkstyle https://github.com/LEI-128791/Battleship2/actions/runs/41740509254
+- Momento 2: Qodana https://github.com/LEI-128791/Battleship2/actions/runs/41741891675 · Checkstyle https://github.com/LEI-128791/Battleship2/actions/runs/41741891796
+- Momento 3: Qodana https://github.com/LEI-128791/Battleship2/actions/runs/41742497889 · Checkstyle https://github.com/LEI-128791/Battleship2/actions/runs/41742497963
+
+Nota: os relatórios `checkstyle` (reviewdog) e `Qodana for JVM`, criados pelas próprias ferramentas, têm o mesmo nome em todos os workflows do repositório, por isso o GitHub mostra-os agrupados com um dos workflows; não são checks obrigatórios. Neste trabalho contam os `qodana-83590` e `checkstyle-83590`.
 
 ## O que o Checkstyle não consegue verificar
 
