@@ -1,10 +1,9 @@
+# 128791 - João Nunes
 version: "1.0"
 linter: jetbrains/qodana-jvm:2026.2
-
+projectJDK: "21"
 profile:
-  path: .qodana/profiles/long-parameter-list_128791.yaml
-
-# Quality gate: o pipeline falha se existir qualquer problema reportado
+  path: Battleship2-main/.qodana/profiles/profile-128791.yaml
 failureConditions:
   severityThresholds:
     any: 0
