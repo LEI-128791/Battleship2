@@ -202,5 +202,5 @@ public class Move implements IMove {
 		// Retornar o JSON
 		return jsonString;
 	}
-	void codeSmell(int a, int b, int c, int d, int e, int f, int g, int h) { }
+	void codeSmell1(int a, int b, int c, int d, int e, int f, int g, int h) { }
 }
