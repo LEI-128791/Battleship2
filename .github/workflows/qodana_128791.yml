@@ -1,0 +1,30 @@
+#128791 João Nunes
+name: Qodana quality gate (Long Parameter List)
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main, a128791-branch]
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Qodana Scan
+        uses: JetBrains/qodana-action@v2026.2
+        with:
+          args: --config,qodana_128791.yaml
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
