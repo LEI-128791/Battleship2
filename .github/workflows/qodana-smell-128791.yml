@@ -3,7 +3,6 @@ name: Qodana smell gate 128791
 on:
   pull_request:
   push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,9 +18,9 @@ jobs:
           fetch-depth: 0
       - uses: JetBrains/qodana-action@v2026.2
         with:
-          args: --config Battleship2-main/qodana-128791.yaml
+          args: --config,.qodana/qodana-128791.yaml
           pr-mode: false
-
+          upload-result: true
           use-annotations: true
           post-pr-comment: true
         env:
