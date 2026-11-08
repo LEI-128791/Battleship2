@@ -1,0 +1,18 @@
+version: "1.0"
+profile:
+  base:
+    name: qodana.starter
+  inspections:
+    - group: ALL
+      enabled: false
+    - inspection: MethodWithTooManyParameters
+      enabled: true
+      severity: WARNING
+      options:
+        m_limit: 5
+    - inspection: ConstructorWithTooManyParameters
+      enabled: true
+      severity: WARNING
+      options:
+        m_limit: 5
+        ignoreScope: none
