@@ -20,6 +20,12 @@ jobs:
       - uses: JetBrains/qodana-action@v2026.2
         with:
           args: --config Battleship2-main/qodana-128791.yaml
+                - uses: JetBrains/qodana-action@v2026.2
+        with:
+          args: --config Battleship2-main/qodana-128791.yaml
+          pr-mode: false
+          use-annotations: true
+          post-pr-comment: true
           use-annotations: true
           post-pr-comment: true
         env:
