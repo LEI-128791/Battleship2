@@ -34,10 +34,25 @@ public class Move implements IMove {
 		return Messages.get("category." + category.toLowerCase());
 	}
 
-	public void codeSmell(int a, int b, int c, int d, int e, int f, int g, int h) {
+	public int codeSmell(int a, int b, int c, int d, int e, int f, int g, int h) {
 		int i;
-		i=a+b+c+d+e+f+g+h+3;
-		return;
+		i=a+b+c+d+e+f+g+h;
+		return i;
+	}
+	public int codeSmell2(int a, int b, int c, int d, int e, int f, int g, int h) {
+		int i;
+		i=a+b+c+d+e+f+g+h+5;
+		return i;
+	}
+	public int codeSmell3(int a, int b, int c, int d, int e, int f, int g, int h) {
+		int i;
+		i=a+b+c+d+e+f+g+h+4;
+		return i;
+	}
+	public int codeSmell4(int a, int b, int c, int d, int e, int f, int g, int h) {
+		int i;
+		i=a+b+c+d+e+f+g+h+6;
+		return i;
 	}
 
 	@Override
