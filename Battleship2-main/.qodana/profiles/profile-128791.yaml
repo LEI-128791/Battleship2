@@ -10,6 +10,7 @@ profile:
   inspections:
     - inspection: MethodWithTooManyParameters
       enabled: true
+      severity: WARNING
       options:
         # Numero de parametros de um metodo (PAR).
         # Valor por omissao do IDE: 5.
@@ -18,6 +19,7 @@ profile:
 
     - inspection: ConstructorWithTooManyParameters
       enabled: true
+      severity: WARNING
       options:
         # Numero de parametros de um construtor.
         # Valor por omissao do IDE: 5.
