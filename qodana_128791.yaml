@@ -1,9 +1,9 @@
-# 128791 - Joao Nunes
+# 128791 - João Nunes
 version: "1.0"
-linter: jetbrains/qodana-jvm-community:2026.2
+linter: jetbrains/qodana-jvm:2026.2
 projectJDK: "21"
 profile:
-  path: .qodana/profiles/profile-128791.yaml
+  path: Battleship2-main/.qodana/profiles/profile-128791.yaml
 failureConditions:
   severityThresholds:
     any: 0
