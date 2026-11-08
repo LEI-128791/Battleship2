@@ -1,5 +1,5 @@
 # 128791 - João Nunes
-name: Qodana smell 128791
+name: Qodana smell gate 128791
 on:
   pull_request:
   push:
