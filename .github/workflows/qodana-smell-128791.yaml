@@ -1,5 +1,5 @@
 #128791 João Nunes
-name: Qodana quality gate (Long Parameter List)
+name: Qodana smell gate 128782
 on:
   workflow_dispatch:
   pull_request:
