@@ -11,4 +11,4 @@ imports:
 failureConditions:
   severityThresholds:
     # Falha se houver MAIS do que N problemas (metodos com mais de 5 atributos).
-    any: 5
+    any: 0
