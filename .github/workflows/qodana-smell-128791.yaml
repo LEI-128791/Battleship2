@@ -21,6 +21,7 @@ jobs:
         with:
           args: --config Battleship2-main/qodana-128791.yaml
           pr-mode: false
+          upload-result: true
           use-annotations: true
           post-pr-comment: true
         env:
