@@ -1,0 +1,10 @@
+version: "1.0"
+linter: jetbrains/qodana-jvm:2026.2
+
+profile:
+  path: .qodana/profiles/long-parameter-list_128791.yaml
+
+# Quality gate: o pipeline falha se existir qualquer problema reportado
+failureConditions:
+  severityThresholds:
+    any: 0
