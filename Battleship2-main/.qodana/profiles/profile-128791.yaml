@@ -2,6 +2,7 @@
 # Cheiro escolhido: Long Parameter List (Fowler)
 # Nota: o livro (Object-Oriented Metrics in Practice) nao define uma estrategia
 # de detecao para este cheiro, por isso usa-se o limiar por omissao das inspecoes.
+name: "Long Parameter List 128791"
 baseProfile: empty
 
 inspections:
