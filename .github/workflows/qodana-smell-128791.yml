@@ -1,5 +1,5 @@
 # 128791 - João Nunes
-name: Qodana smell 128791
+name: Qodana smell gate 128791
 on:
   pull_request:
   push:
@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
       - uses: JetBrains/qodana-action@v2026.2
         with:
-          args: --config Battleship2-main/.qodana/qodana-128791.yaml
+          args: --config Battleship2-main/qodana-128791.yaml
           pr-mode: false
           upload-result: true
           use-annotations: true

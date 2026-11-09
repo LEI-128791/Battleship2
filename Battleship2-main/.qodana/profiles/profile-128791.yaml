@@ -2,25 +2,21 @@
 # Cheiro escolhido: Long Parameter List (Fowler)
 # Nota: o livro (Object-Oriented Metrics in Practice) nao define uma estrategia
 # de detecao para este cheiro, por isso usa-se o limiar por omissao das inspecoes.
-version: "1.0"
-profile:
-  base:
-    name: empty
+name: "Long Parameter List 128791"
+baseProfile: empty
 
-  inspections:
-    - inspection: MethodWithTooManyParameters
-      enabled: true
-      options:
-        # Numero de parametros de um metodo (PAR).
-        # Valor por omissao do IDE: 5.
-        # A inspecao assinala metodos com parametros ACIMA do limite.
-        m_limit: 5
+inspections:
+  - inspection: ParametersPerMethod
+    enabled: true
+    severity: WARNING
+    options:
+      # Assinala metodos com MAIS parametros do que este limite (PAR).
+      # Valor por omissao do IDE: 5.
+      m_limit: 5
 
-    - inspection: ConstructorWithTooManyParameters
-      enabled: true
-      options:
-        # Numero de parametros de um construtor.
-        # Valor por omissao do IDE: 5.
-        m_limit: 5
-        # Nao ignorar construtores por visibilidade.
-        ignoreScope: none
+  - inspection: ParametersPerConstructor
+    enabled: true
+    severity: WARNING
+    options:
+      # Assinala construtores com MAIS parametros do que este limite.
+      m_limit: 5
