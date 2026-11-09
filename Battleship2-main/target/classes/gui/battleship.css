@@ -1,0 +1,98 @@
+/* Colocar em: src/main/resources/gui/battleship.css */
+
+.root-pane {
+    -fx-background-color: linear-gradient(to bottom, #061A2B, #0B2E47 55%, #07202F);
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.title { -fx-text-fill: white; -fx-font-size: 26px; -fx-font-weight: bold; }
+.subtitle { -fx-text-fill: #7FB6D6; -fx-font-size: 11px; -fx-font-weight: bold; }
+.field-caption { -fx-text-fill: #7FB6D6; -fx-font-size: 10px; -fx-font-weight: bold; }
+
+.text-field {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-background-radius: 6;
+    -fx-border-color: rgba(127,182,214,0.35);
+    -fx-border-radius: 6;
+    -fx-text-fill: white;
+    -fx-highlight-fill: #2A7DB0;
+    -fx-padding: 5 8 5 8;
+}
+.text-field:focused { -fx-border-color: #4FC3F7; }
+
+.panel {
+    -fx-background-color: rgba(8,36,56,0.85);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(127,182,214,0.28);
+    -fx-border-radius: 12;
+    -fx-padding: 12 14 14 14;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 18, 0.2, 0, 4);
+}
+.panel-title { -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; }
+.badge {
+    -fx-text-fill: #CFE8F7;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-color: rgba(79,195,247,0.16);
+    -fx-background-radius: 10;
+    -fx-padding: 3 10 3 10;
+}
+.axis-label { -fx-text-fill: #7FB6D6; -fx-font-size: 11px; -fx-font-weight: bold; }
+
+.status-bar {
+    -fx-background-color: rgba(0,0,0,0.30);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 0 0 0 5;
+    -fx-padding: 10 16 10 14;
+}
+.status-info  { -fx-border-color: transparent transparent transparent #4FC3F7; }
+.status-warn  { -fx-border-color: transparent transparent transparent #FFB300; }
+.status-error { -fx-border-color: transparent transparent transparent #FF5252; }
+.status-win   { -fx-border-color: transparent transparent transparent #FFD54A; }
+.status-lose  { -fx-border-color: transparent transparent transparent #FF5252; }
+.status-text  { -fx-text-fill: #E3F2FA; -fx-font-size: 14px; -fx-font-weight: bold; }
+.status-win .status-text  { -fx-text-fill: #FFD54A; }
+.status-lose .status-text { -fx-text-fill: #FF8A80; }
+
+.stat-caption { -fx-text-fill: #7FB6D6; -fx-font-size: 10px; -fx-font-weight: bold; }
+.stat-value   { -fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold; }
+.legend-text  { -fx-text-fill: #A9CCE3; -fx-font-size: 11px; }
+
+.button { -fx-cursor: hand; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8 18 8 18; }
+
+.secondary-button {
+    -fx-background-color: rgba(79,195,247,0.16);
+    -fx-border-color: rgba(79,195,247,0.55);
+    -fx-border-radius: 8;
+    -fx-text-fill: #CFE8F7;
+}
+.secondary-button:hover { -fx-background-color: rgba(79,195,247,0.30); }
+
+.fire-button {
+    -fx-background-color: linear-gradient(to bottom, #FF5A4E, #C62828);
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-padding: 10 34 10 34;
+    -fx-effect: dropshadow(gaussian, rgba(229,57,53,0.55), 14, 0.3, 0, 2);
+}
+.fire-button:hover { -fx-background-color: linear-gradient(to bottom, #FF7367, #D32F2F); }
+.fire-button:pressed { -fx-background-color: #B71C1C; }
+.fire-button:disabled {
+    -fx-opacity: 0.4;
+    -fx-effect: null;
+}
+
+.banner {
+    -fx-background-color: rgba(5,20,32,0.94);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(127,182,214,0.4);
+    -fx-border-radius: 16;
+    -fx-padding: 30 54 30 54;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 30, 0.3, 0, 6);
+}
+.banner-title { -fx-font-size: 44px; -fx-font-weight: bold; }
+.banner-win  { -fx-text-fill: #FFD54A; }
+.banner-lose { -fx-text-fill: #FF5252; }
+.banner-neutral { -fx-text-fill: #4FC3F7; }
+.banner-subtitle { -fx-text-fill: #CFE8F7; -fx-font-size: 15px; }
