@@ -202,5 +202,5 @@ public class Move implements IMove {
 		// Retornar o JSON
 		return jsonString;
 	}
-	void bad(int hello) {}
+	void bad(int hello, int hello2) {}
 }
