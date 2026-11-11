@@ -182,4 +182,31 @@ public class PositionTest {
 				"Incorrect string representation: expected '" + expected +
 						"' but got '" + position.toString() + "'");
 	}
+
+	@Test
+	@DisplayName("Construtor clássico ('C', 4) converte para linha 2 e coluna 3")
+	void classicConstructor() {
+		Position pos = new Position('C', 4);
+		assertEquals(2, pos.getRow(), "Linha 'C' deve corresponder ao indice 2");
+		assertEquals(3, pos.getColumn(), "Coluna 4 deve corresponder ao indice 3");
+		assertFalse(pos.isOccupied(), "Nova posicao nao deve estar ocupada");
+		assertFalse(pos.isHit(), "Nova posicao nao deve estar atingida");
+	}
+
+	@Test
+	@DisplayName("Construtor clássico aceita a linha em minúscula")
+	void classicConstructorLowerCase() {
+		Position pos = new Position('c', 4);
+		assertEquals(2, pos.getRow(), "Letra minuscula deve ser tratada como maiuscula");
+		assertEquals(3, pos.getColumn(), "Coluna 4 deve corresponder ao indice 3");
+	}
+
+	@Test
+	@DisplayName("getClassicColumn devolve a coluna entre 1 e 10")
+	void classicColumn() {
+		assertEquals(4, position.getClassicColumn(),
+				"Coluna de indice 3 deve ser a coluna classica 4");
+		assertEquals(1, new Position(0, 0).getClassicColumn(),
+				"Coluna de indice 0 deve ser a coluna classica 1");
+	}
 }
