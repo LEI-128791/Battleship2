@@ -1,0 +1,37 @@
+# Executa a bateria de testes unitarios (JUnit) com Maven em cada push
+# e em cada pull request.
+name: Unit tests (Maven)
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    name: maven-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # O projeto Maven esta na subpasta Battleship2-main.
+        working-directory: Battleship2-main
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+          cache-dependency-path: Battleship2-main/pom.xml
+
+      - name: Build and run unit tests
+        run: mvn -B test
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: Battleship2-main/target/surefire-reports

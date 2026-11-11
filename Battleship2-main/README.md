@@ -382,6 +382,13 @@ mvn test
 
 Maven compiles the project, resolves the required dependencies and runs the configured tests.
 
+### ⚙️ Continuous Integration (GitHub Actions)
+
+The workflow [`maven-tests.yaml`](../.github/workflows/maven-tests.yaml) runs the unit test suite automatically.
+
+- **When it runs:** on every `push` and every `pull_request`, and manually through *Actions → Unit tests (Maven) → Run workflow*.
+- **What it does:** checks out the repository, sets up JDK 21 (Temurin) with the Maven cache, and runs `mvn -B test` inside the `Battleship2-main` folder.
+- **Result:** the run fails if any unit test fails, which blocks a Pull Request from being merged with broken tests. The JUnit (Surefire) reports are uploaded as the `surefire-reports` artifact of each run.
 ---
 
 ## 🤝 Contributing
