@@ -1,28 +1,40 @@
 package battleship;
 
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-// Imports any necessary classes like Position, Compass, etc.
-
+import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 /**
- * Test class for the Carrack class.
- * Author: ${user.name}
- * Date: ${current_date}
- * Time: ${current_time}
- * Cyclomatic Complexity for each method:
- * - Constructor: 5
- * - getSize: 1
- * - stillFloating: 2
- * - getPositions: 2
- * - getTopMostPos: 2
- * - getBottomMostPos: 2
- * - getLeftMostPos: 2
- * - getRightMostPos: 2
+ * Test class for class Carrack.
+ * Author: LEI-128782
+ * Date: 2026-11-18 20:20
+ * Cyclomatic Complexity:
+ * - Carrack(Compass, IPosition) (constructor): 9
+ *   (1 + 4 switch cases + 4 for loops, one loop per case)
+ *
+ * Notes on the 9 test paths:
+ * - carrack1..carrack4: one per switch case (SOUTH, NORTH, EAST, WEST); each one takes the
+ *   case edge, the loop-body edge (3 iterations) and the loop-exit edge of that case.
+ * - carrack5..carrack7: exception exits from super(...) (Objects.requireNonNull in Ship),
+ *   thrown before the switch is reached.
+ * - carrack8..carrack9: boundary starts (board corner / last row and column). The two
+ *   remaining basis paths in the CFG (loop body never executed, switch with no
+ *   matching case) are infeasible: the size is the constant 3 and Compass has
+ *   exactly four values, so these tests check the edges of the board instead.
+ *
+ * Methods inherited from Ship (getSize, stillFloating, getTopMostPos, ...) are
+ * declared in Ship and covered by ShipTest.
  */
-public class CarrackTest {
+class CarrackTest {
+
+    private static final String CATEGORY = "Nau";
+    private static final int SIZE = 3;
 
     private Carrack carrack;
 
@@ -36,170 +48,180 @@ public class CarrackTest {
         carrack = null;
     }
 
-    /**
-     * Test for the constructor with valid input.
-     * Cyclomatic Complexity: 5
-     */
     @Test
-    void testConstructor() {
-        assertNotNull(carrack, "Error: Carrack instance should not be null.");
-        assertEquals("Nau", carrack.getCategory(), "Error: Carrack's category should be 'Nau'.");
-        assertEquals(Compass.NORTH, carrack.getBearing(), "Error: Carrack's bearing is incorrect.");
-        assertEquals(3, carrack.getSize(), "Error: Carrack's size should be 3.");
-        assertEquals(3, carrack.getPositions().size(), "Error: Carrack should have 3 positions.");
+    @DisplayName("Carrack: bearing SOUTH places 3 vertical positions (rows grow downwards from the start position)")
+    void carrack1() {
+        Carrack ship = new Carrack(Compass.SOUTH, new Position(5, 5));
+        List<IPosition> expected = verticalPositions(5, 5);
+
+        assertAll(
+                () -> assertEquals(CATEGORY, ship.getCategory(),
+                        "Error: expected category " + CATEGORY + " but got " + ship.getCategory()),
+                () -> assertEquals(Compass.SOUTH, ship.getBearing(),
+                        "Error: expected bearing SOUTH but got " + ship.getBearing()),
+                () -> assertEquals(SIZE, ship.getSize(),
+                        "Error: expected size " + SIZE + " but got " + ship.getSize()),
+                () -> assertEquals(new Position(5, 5), ship.getPosition(),
+                        "Error: expected start position (5, 5) but got " + ship.getPosition()),
+                () -> assertEquals(expected, ship.getPositions(),
+                        "Error: expected positions " + expected + " but got " + ship.getPositions())
+        );
     }
 
-    /**
-     * Test for the getSize method (basic validation).
-     * Cyclomatic Complexity: 1
-     */
     @Test
-    void testGetSize() {
-        assertEquals(3, carrack.getSize(), "Error: The size of the Carrack should be 3.");
+    @DisplayName("Carrack: bearing NORTH places 3 vertical positions (rows grow downwards from the start position)")
+    void carrack2() {
+        // Instance created in setUp() with bearing NORTH at (5, 5)
+        Carrack ship = carrack;
+        List<IPosition> expected = verticalPositions(5, 5);
+
+        assertAll(
+                () -> assertEquals(CATEGORY, ship.getCategory(),
+                        "Error: expected category " + CATEGORY + " but got " + ship.getCategory()),
+                () -> assertEquals(Compass.NORTH, ship.getBearing(),
+                        "Error: expected bearing NORTH but got " + ship.getBearing()),
+                () -> assertEquals(SIZE, ship.getSize(),
+                        "Error: expected size " + SIZE + " but got " + ship.getSize()),
+                () -> assertEquals(new Position(5, 5), ship.getPosition(),
+                        "Error: expected start position (5, 5) but got " + ship.getPosition()),
+                () -> assertEquals(expected, ship.getPositions(),
+                        "Error: expected positions " + expected + " but got " + ship.getPositions())
+        );
     }
 
-    /**
-     * Test for the getPositions method (all positions must be correct).
-     * Cyclomatic Complexity: 2
-     */
     @Test
-    void testGetPositions() {
-        List<IPosition> positions = carrack.getPositions();
+    @DisplayName("Carrack: bearing EAST places 3 horizontal positions (columns grow to the right of the start position)")
+    void carrack3() {
+        Carrack ship = new Carrack(Compass.EAST, new Position(5, 5));
+        List<IPosition> expected = horizontalPositions(5, 5);
 
-        // Validate the number of positions
-        assertEquals(3, positions.size(), "Error: The Carrack should have three positions.");
-
-        // Validate each position
-        assertEquals(new Position(5, 5), positions.get(0), "Error: The first position is incorrect.");
-        assertEquals(new Position(6, 5), positions.get(1), "Error: The second position is incorrect.");
-        assertEquals(new Position(7, 5), positions.get(2), "Error: The third position is incorrect.");
+        assertAll(
+                () -> assertEquals(CATEGORY, ship.getCategory(),
+                        "Error: expected category " + CATEGORY + " but got " + ship.getCategory()),
+                () -> assertEquals(Compass.EAST, ship.getBearing(),
+                        "Error: expected bearing EAST but got " + ship.getBearing()),
+                () -> assertEquals(SIZE, ship.getSize(),
+                        "Error: expected size " + SIZE + " but got " + ship.getSize()),
+                () -> assertEquals(new Position(5, 5), ship.getPosition(),
+                        "Error: expected start position (5, 5) but got " + ship.getPosition()),
+                () -> assertEquals(expected, ship.getPositions(),
+                        "Error: expected positions " + expected + " but got " + ship.getPositions())
+        );
     }
 
-    /**
-     * Test for the getTopMostPos method.
-     * Cyclomatic Complexity: 2
-     */
     @Test
-    void testGetTopMostPos() {
-        assertEquals(5, carrack.getTopMostPos(), "Error: The topmost position of the Carrack should be 5.");
+    @DisplayName("Carrack: bearing WEST places 3 horizontal positions (columns grow to the right of the start position)")
+    void carrack4() {
+        Carrack ship = new Carrack(Compass.WEST, new Position(5, 5));
+        List<IPosition> expected = horizontalPositions(5, 5);
+
+        assertAll(
+                () -> assertEquals(CATEGORY, ship.getCategory(),
+                        "Error: expected category " + CATEGORY + " but got " + ship.getCategory()),
+                () -> assertEquals(Compass.WEST, ship.getBearing(),
+                        "Error: expected bearing WEST but got " + ship.getBearing()),
+                () -> assertEquals(SIZE, ship.getSize(),
+                        "Error: expected size " + SIZE + " but got " + ship.getSize()),
+                () -> assertEquals(new Position(5, 5), ship.getPosition(),
+                        "Error: expected start position (5, 5) but got " + ship.getPosition()),
+                () -> assertEquals(expected, ship.getPositions(),
+                        "Error: expected positions " + expected + " but got " + ship.getPositions())
+        );
     }
 
-    /**
-     * Test for the getBottomMostPos method.
-     * Cyclomatic Complexity: 2
-     */
     @Test
-    void testGetBottomMostPos() {
-        assertEquals(7, carrack.getBottomMostPos(), "Error: The bottommost position of the Carrack should be 7.");
+    @DisplayName("Carrack: null bearing throws NullPointerException before the switch")
+    void carrack5() {
+        NullPointerException e = assertThrows(NullPointerException.class,
+                () -> new Carrack(null, new Position(5, 5)),
+                "Error: expected NullPointerException for a null bearing but none was thrown");
+
+        assertEquals("Ship's bearing must not be null", e.getMessage(),
+                "Error: expected message 'Ship's bearing must not be null' but got '" + e.getMessage() + "'");
     }
 
-    /**
-     * Test for the getLeftMostPos method.
-     * Cyclomatic Complexity: 2
-     */
     @Test
-    void testGetLeftMostPos() {
-        assertEquals(5, carrack.getLeftMostPos(), "Error: The leftmost position of the Carrack should be 5.");
+    @DisplayName("Carrack: null position throws NullPointerException before the switch")
+    void carrack6() {
+        NullPointerException e = assertThrows(NullPointerException.class,
+                () -> new Carrack(Compass.EAST, null),
+                "Error: expected NullPointerException for a null position but none was thrown");
+
+        assertEquals("Ship's position must not be null", e.getMessage(),
+                "Error: expected message 'Ship's position must not be null' but got '" + e.getMessage() + "'");
     }
 
-    /**
-     * Test for the getRightMostPos method.
-     * Cyclomatic Complexity: 2
-     */
     @Test
-    void testGetRightMostPos() {
-        assertEquals(5, carrack.getRightMostPos(), "Error: The rightmost position of the Carrack should be 5.");
+    @DisplayName("Carrack: null bearing and position fail on the bearing check first")
+    void carrack7() {
+        NullPointerException e = assertThrows(NullPointerException.class,
+                () -> new Carrack(null, null),
+                "Error: expected NullPointerException for null arguments but none was thrown");
+
+        assertEquals("Ship's bearing must not be null", e.getMessage(),
+                "Error: expected the bearing check to fail first but got '" + e.getMessage() + "'");
     }
 
-    /**
-     * Test for the stillFloating method (all positions intact).
-     * Cyclomatic Complexity: 2
-     */
     @Test
-    void testStillFloating1() {
-        assertTrue(carrack.stillFloating(), "Error: Carrack should initially be floating.");
+    @DisplayName("Carrack: ship starting at the board corner (0, 0) stays inside the board")
+    void carrack8() {
+        Carrack south = new Carrack(Compass.SOUTH, new Position(0, 0));
+        Carrack west = new Carrack(Compass.WEST, new Position(0, 0));
+
+        assertAll(
+                () -> assertEquals(verticalPositions(0, 0), south.getPositions(),
+                        "Error: expected SOUTH positions " + verticalPositions(0, 0)
+                                + " but got " + south.getPositions()),
+                () -> assertEquals(horizontalPositions(0, 0), west.getPositions(),
+                        "Error: expected WEST positions " + horizontalPositions(0, 0)
+                                + " but got " + west.getPositions()),
+                () -> assertTrue(south.isInsideBoard(),
+                        "Error: expected the SOUTH ship at (0, 0) to be inside the board but it was not"),
+                () -> assertTrue(west.isInsideBoard(),
+                        "Error: expected the WEST ship at (0, 0) to be inside the board but it was not")
+        );
     }
 
-    /**
-     * Test for the stillFloating method (some positions hit).
-     */
     @Test
-    void testStillFloating2() {
-        // Hit one position
-        carrack.getPositions().get(0).shoot();
-        assertTrue(carrack.stillFloating(), "Error: Carrack should still be floating when only one position is hit.");
+    @DisplayName("Carrack: constructor does not clip a ship that runs past the last row or column")
+    void carrack9() {
+        int last = Game.BOARD_SIZE - 1;
+        Carrack north = new Carrack(Compass.NORTH, new Position(last, 0));
+        Carrack east = new Carrack(Compass.EAST, new Position(0, last));
+
+        assertAll(
+                () -> assertEquals(SIZE, north.getPositions().size(),
+                        "Error: expected " + SIZE + " NORTH positions but got " + north.getPositions().size()),
+                () -> assertEquals(SIZE, east.getPositions().size(),
+                        "Error: expected " + SIZE + " EAST positions but got " + east.getPositions().size()),
+                () -> assertEquals(last + SIZE - 1, north.getBottomMostPos(),
+                        "Error: expected bottom row " + (last + SIZE - 1) + " but got " + north.getBottomMostPos()),
+                () -> assertEquals(last + SIZE - 1, east.getRightMostPos(),
+                        "Error: expected right column " + (last + SIZE - 1) + " but got " + east.getRightMostPos()),
+                () -> assertFalse(north.isInsideBoard(),
+                        "Error: expected the NORTH ship at the last row to be outside the board but it was inside"),
+                () -> assertFalse(east.isInsideBoard(),
+                        "Error: expected the EAST ship at the last column to be outside the board but it was inside")
+        );
     }
 
-    /**
-     * Test for the stillFloating method (all positions hit).
-     */
-    @Test
-    void testStillFloating3() {
-        carrack.getPositions().forEach(position -> position.shoot());
-        assertFalse(carrack.stillFloating(), "Error: Carrack should not be floating when all positions are hit.");
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    private static List<IPosition> verticalPositions(int row, int column) {
+        List<IPosition> positions = new ArrayList<>();
+        for (int r = 0; r < SIZE; r++) {
+            positions.add(new Position(row + r, column));
+        }
+        return positions;
     }
 
-    /**
-     * Test for the constructor with null inputs.
-     * Expect exception.
-     */
-    @Test
-    void testConstructorWithNull() {
-        assertThrows(NullPointerException.class, () -> new Carrack(null, null),
-                "Error: Expected NullPointerException for null input.");
-    }
-
-    /**
-     * Test for positions with EAST direction.
-     */
-    @Test
-    void testConstructorDirectionEast() {
-        Carrack carrackEast = new Carrack(Compass.EAST, new Position(5, 5));
-        List<IPosition> positions = carrackEast.getPositions();
-
-        assertNotNull(carrackEast, "Error: Carrack with EAST direction should not be null.");
-        assertEquals(new Position(5, 5), positions.get(0), "Error: The first position is incorrect for EAST direction.");
-        assertEquals(new Position(5, 6), positions.get(1), "Error: The second position is incorrect for EAST direction.");
-        assertEquals(new Position(5, 7), positions.get(2), "Error: The third position is incorrect for EAST direction.");
-    }
-
-    /**
-     * Test for positions with SOUTH direction.
-     */
-    @Test
-    void testConstructorDirectionSouth() {
-        Carrack carrackSouth = new Carrack(Compass.SOUTH, new Position(5, 5));
-        List<IPosition> positions = carrackSouth.getPositions();
-
-        assertNotNull(carrackSouth, "Error: Carrack with SOUTH direction should not be null.");
-        assertEquals(new Position(5, 5), positions.get(0), "Error: The first position is incorrect for SOUTH direction.");
-        assertEquals(new Position(6, 5), positions.get(1), "Error: The second position is incorrect for SOUTH direction.");
-        assertEquals(new Position(7, 5), positions.get(2), "Error: The third position is incorrect for SOUTH direction.");
-    }
-
-    /**
-     * Test for positions with WEST direction.
-     */
-    @Test
-    void testConstructorDirectionWest() {
-        Carrack carrackWest = new Carrack(Compass.WEST, new Position(5, 5));
-        List<IPosition> positions = carrackWest.getPositions();
-
-        assertNotNull(carrackWest, "Error: Carrack with WEST direction should not be null.");
-        assertEquals(new Position(5, 5), positions.get(0), "Error: The first position is incorrect for WEST direction.");
-        assertEquals(new Position(5, 6), positions.get(1), "Error: The second position is incorrect for WEST direction.");
-        assertEquals(new Position(5, 7), positions.get(2), "Error: The third position is incorrect for WEST direction.");
-    }
-
-    /**
-     * Test for the constructor's exception with invalid parameters.
-     * Ensures assertions in the constructor work properly.
-     */
-    @Test
-    void testConstructorWithInvalidInput() {
-        assertThrows(NullPointerException.class, () -> new Carrack(null, new Position(5, 5)),
-                "Error: Should throw NullPointerException for null bearing.");
-        assertThrows(NullPointerException.class, () -> new Carrack(Compass.NORTH, null),
-                "Error: Should throw NullPointerException for null position.");
+    private static List<IPosition> horizontalPositions(int row, int column) {
+        List<IPosition> positions = new ArrayList<>();
+        for (int c = 0; c < SIZE; c++) {
+            positions.add(new Position(row, column + c));
+        }
+        return positions;
     }
 }
