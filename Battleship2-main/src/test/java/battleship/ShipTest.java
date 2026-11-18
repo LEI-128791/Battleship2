@@ -237,5 +237,151 @@ public class ShipTest {
         assertEquals(3, shipBorder.getAdjacentPositions().size(), "Error: The number of adjacent positions of a barge in the middle of the tray should be 8.");
     }
 
+    // ------------------------------------------------------------------
+    // Testes adicionais (cobertura de linhas e ramos)
+    // ------------------------------------------------------------------
 
+    @Test
+    @DisplayName("buildShip cria o tipo de navio certo para cada categoria")
+    void buildShipKnownKinds() {
+        Position p = new Position(1, 1);
+        assertInstanceOf(Barge.class, Ship.buildShip("barca", Compass.NORTH, p));
+        assertInstanceOf(Caravel.class, Ship.buildShip("caravela", Compass.NORTH, p));
+        assertInstanceOf(Carrack.class, Ship.buildShip("nau", Compass.NORTH, p));
+        assertInstanceOf(Frigate.class, Ship.buildShip("fragata", Compass.NORTH, p));
+        assertInstanceOf(Galleon.class, Ship.buildShip("galeao", Compass.NORTH, p));
+    }
+
+    @Test
+    @DisplayName("buildShip devolve null para uma categoria desconhecida")
+    void buildShipUnknownKind() {
+        assertNull(Ship.buildShip("submarino", Compass.NORTH, new Position(1, 1)),
+                "Categoria desconhecida deve devolver null");
+    }
+
+    @Test
+    @DisplayName("getPosition devolve a posição inicial do navio")
+    void getPositionReturnsStartPosition() {
+        Position start = new Position(3, 4);
+        Ship barge = new Barge(Compass.NORTH, start);
+        assertEquals(start, barge.getPosition(), "Deve devolver a posicao de criacao");
+    }
+
+    @Test
+    @DisplayName("getAdjacentPositions de uma fragata tem 14 posições sem repetições")
+    void adjacentPositionsOfFrigate() {
+        Ship frigate = new Frigate(Compass.NORTH, new Position(4, 4));
+        List<IPosition> adjacent = frigate.getAdjacentPositions();
+        assertEquals(14, adjacent.size(), "Fragata vertical tem 14 posicoes adjacentes");
+        assertEquals(adjacent.size(), adjacent.stream().distinct().count(),
+                "Nao deve haver posicoes repetidas");
+        for (IPosition position : frigate.getPositions())
+            assertFalse(adjacent.contains(position),
+                    "As posicoes do proprio navio nao sao adjacentes");
+    }
+
+    @Test
+    @DisplayName("getAdjacentPositions de uma barca tem 8 posições")
+    void adjacentPositionsOfBarge() {
+        assertEquals(8, ship.getAdjacentPositions().size(),
+                "Barca no meio do tabuleiro tem 8 vizinhas");
+    }
+
+    @Test
+    @DisplayName("getTopMostPos devolve a linha mais pequena mesmo com posições fora de ordem")
+    void topMostPosWithUnorderedPositions() {
+        Ship custom = new Ship("Teste", Compass.NORTH, new Position(3, 0), 3) {
+            {
+                positions.add(new Position(3, 0));
+                positions.add(new Position(1, 0));
+                positions.add(new Position(2, 0));
+            }
+        };
+        assertEquals(1, custom.getTopMostPos(), "A linha mais acima e a 1");
+    }
+
+    @Test
+    @DisplayName("occupies devolve true para posição do navio e false para outra")
+    void occupiesTrueAndFalse() {
+        assertTrue(ship.occupies(new Position(5, 5)), "Posicao do navio deve estar ocupada");
+        assertFalse(ship.occupies(new Position(0, 9)), "Posicao longe nao esta ocupada");
+    }
+
+    @Test
+    @DisplayName("tooCloseTo(IShip) devolve true para navio encostado e false para navio longe")
+    void tooCloseToShip() {
+        Ship near = new Barge(Compass.NORTH, new Position(5, 6));
+        Ship far = new Barge(Compass.NORTH, new Position(9, 9));
+        assertTrue(ship.tooCloseTo(near), "Navios encostados estao demasiado perto");
+        assertFalse(ship.tooCloseTo(far), "Navios afastados nao estao demasiado perto");
+    }
+
+    @Test
+    @DisplayName("tooCloseTo(IPosition) devolve true para posição vizinha e false para distante")
+    void tooCloseToPosition() {
+        assertTrue(ship.tooCloseTo(new Position(6, 6)), "Diagonal conta como perto");
+        assertFalse(ship.tooCloseTo(new Position(9, 0)), "Posicao distante nao conta");
+    }
+
+    @Test
+    @DisplayName("isInsideBoard devolve true para um navio dentro do tabuleiro")
+    void isInsideBoardTrue() {
+        assertTrue(ship.isInsideBoard(), "Barca em (5,5) esta dentro");
+        assertTrue(new Frigate(Compass.NORTH, new Position(6, 9)).isInsideBoard(),
+                "Fragata encostada ao limite inferior ainda esta dentro");
+    }
+
+    @Test
+    @DisplayName("isInsideBoard devolve false quando sai por cada um dos lados")
+    void isInsideBoardFalse() {
+        assertFalse(new Barge(Compass.NORTH, new Position(5, -1)).isInsideBoard(), "Sai pela esquerda");
+        assertFalse(new Frigate(Compass.EAST, new Position(5, 8)).isInsideBoard(), "Sai pela direita");
+        assertFalse(new Barge(Compass.NORTH, new Position(-1, 5)).isInsideBoard(), "Sai por cima");
+        assertFalse(new Frigate(Compass.NORTH, new Position(8, 5)).isInsideBoard(), "Sai por baixo");
+    }
+
+    @Test
+    @DisplayName("shoot só atinge a posição indicada")
+    void shootOnlyHitsGivenPosition() {
+        Ship frigate = new Frigate(Compass.NORTH, new Position(2, 2));
+        frigate.shoot(new Position(3, 2));
+        assertTrue(frigate.getPositions().get(1).isHit(), "A posicao atingida deve estar marcada");
+        assertFalse(frigate.getPositions().get(0).isHit(), "As outras nao devem ficar atingidas");
+        assertTrue(frigate.stillFloating(), "O navio continua a flutuar");
+    }
+
+    @Test
+    @DisplayName("shoot numa posição que não é do navio não altera nada")
+    void shootMissLeavesShipIntact() {
+        ship.shoot(new Position(0, 0));
+        assertFalse(ship.getPositions().get(0).isHit(), "Tiro ao lado nao atinge o navio");
+    }
+
+    @Test
+    @DisplayName("toString inclui a categoria e a posição")
+    void toStringContainsCategoryAndPosition() {
+        String text = ship.toString();
+        assertTrue(text.contains("Barca"), "Deve conter a categoria");
+        assertTrue(text.contains("F6"), "Deve conter a posicao classica F6");
+    }
+
+    @Test
+    @DisplayName("buildShip rejeita argumentos nulos (assert)")
+    void buildShipNullArguments() {
+        Position p = new Position(1, 1);
+        assertThrows(AssertionError.class, () -> Ship.buildShip(null, Compass.NORTH, p));
+        assertThrows(AssertionError.class, () -> Ship.buildShip("barca", null, p));
+        assertThrows(AssertionError.class, () -> Ship.buildShip("barca", Compass.NORTH, null));
+    }
+
+    @Test
+    @DisplayName("occupies, tooCloseTo e shoot rejeitam argumentos inválidos (assert)")
+    void methodsRejectInvalidArguments() {
+        assertThrows(AssertionError.class, () -> ship.occupies(null));
+        assertThrows(AssertionError.class, () -> ship.tooCloseTo((IShip) null));
+        assertThrows(AssertionError.class, () -> ship.tooCloseTo((IPosition) null));
+        assertThrows(AssertionError.class, () -> ship.shoot(null));
+        assertThrows(AssertionError.class, () -> ship.shoot(new Position(-1, 0)),
+                "Posicao fora do tabuleiro nao pode ser disparada");
+    }
 }
