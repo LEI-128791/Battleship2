@@ -1,13 +1,11 @@
 package battleship;
 
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,34 +14,17 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.net.URI;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.AccessMode;
-import java.nio.file.CopyOption;
-import java.nio.file.DirectoryStream;
-import java.nio.file.FileStore;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.WatchService;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.FileAttributeView;
-import java.nio.file.attribute.UserPrincipalLookupService;
-import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
 
+import static battleship.PdfReportExporterTestHelper.failingSaveChain;
+import static battleship.PdfReportExporterTestHelper.invokePrivate;
+import static battleship.PdfReportExporterTestHelper.pageCount;
+import static battleship.PdfReportExporterTestHelper.pathProxy;
+import static battleship.PdfReportExporterTestHelper.pdfText;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -590,271 +571,20 @@ class PdfReportExporterTest {
     }
 
     // ------------------------------------------------------------------
-    // Helpers
+    // Helpers (see PdfReportExporterTestHelper)
     // ------------------------------------------------------------------
 
-    private static String pdfText(Path pdf) throws IOException {
-        try (PDDocument document = Loader.loadPDF(pdf.toFile())) {
-            return new PDFTextStripper().getText(document);
-        }
-    }
-
-    private static int pageCount(Path pdf) throws IOException {
-        try (PDDocument document = Loader.loadPDF(pdf.toFile())) {
-            return document.getNumberOfPages();
-        }
-    }
-
-    /**
-     * Builds input -> absolute -> parent -> candidate path proxies on a fake
-     * file system, so the reserved candidate's toFile() can make the save fail.
-     */
-    private static Path failingSaveChain(FakeFileSystem fs, Function<Object[], Object> toFile) {
-        Path candidate = pathProxy(fs, "candidate.pdf", Map.of("toFile", toFile));
-        Path parent = pathProxy(fs, "parent", Map.of("resolve", args -> candidate));
-        Path absolute = pathProxy(fs, "report.pdf", Map.of(
-                "getParent", args -> parent,
-                "getFileName", args -> Path.of("report.pdf")));
-        return pathProxy(fs, "report.pdf", Map.of("toAbsolutePath", args -> absolute));
-    }
-
-    private static Path pathProxy(FakeFileSystem fs, String name,
-                                  Map<String, Function<Object[], Object>> overrides) {
-        Map<String, Function<Object[], Object>> handlers = new HashMap<>(overrides);
-        return (Path) Proxy.newProxyInstance(
-                Path.class.getClassLoader(),
-                new Class<?>[]{Path.class},
-                (proxy, method, args) -> {
-                    Function<Object[], Object> handler = handlers.get(method.getName());
-                    if (handler != null) {
-                        return handler.apply(args);
-                    }
-                    return switch (method.getName()) {
-                        case "getFileSystem" -> fs;
-                        case "toString" -> name;
-                        case "hashCode" -> System.identityHashCode(proxy);
-                        case "equals" -> proxy == args[0];
-                        default -> throw new UnsupportedOperationException(method.getName());
-                    };
-                });
-    }
-
-    private static final class FakeFileSystem extends FileSystem {
-        private final FakeProvider provider = new FakeProvider(this);
-
-        @Override
-        public FileSystemProvider provider() {
-            return provider;
-        }
-
-        @Override
-        public void close() {
-        }
-
-        @Override
-        public boolean isOpen() {
-            return true;
-        }
-
-        @Override
-        public boolean isReadOnly() {
-            return false;
-        }
-
-        @Override
-        public String getSeparator() {
-            return "/";
-        }
-
-        @Override
-        public Iterable<Path> getRootDirectories() {
-            return List.of();
-        }
-
-        @Override
-        public Iterable<FileStore> getFileStores() {
-            return List.of();
-        }
-
-        @Override
-        public Set<String> supportedFileAttributeViews() {
-            return Set.of("basic");
-        }
-
-        @Override
-        public Path getPath(String first, String... more) {
-            throw new UnsupportedOperationException("getPath");
-        }
-
-        @Override
-        public PathMatcher getPathMatcher(String syntaxAndPattern) {
-            throw new UnsupportedOperationException("getPathMatcher");
-        }
-
-        @Override
-        public UserPrincipalLookupService getUserPrincipalLookupService() {
-            throw new UnsupportedOperationException("getUserPrincipalLookupService");
-        }
-
-        @Override
-        public WatchService newWatchService() {
-            throw new UnsupportedOperationException("newWatchService");
-        }
-    }
-
-    private static final class FakeProvider extends FileSystemProvider {
-        private final FakeFileSystem fileSystem;
-        private final List<Path> createdDirectories = new ArrayList<>();
-        private final List<Path> createdFiles = new ArrayList<>();
-        private final List<Path> deletedFiles = new ArrayList<>();
-        private boolean failDelete;
-
-        private FakeProvider(FakeFileSystem fileSystem) {
-            this.fileSystem = fileSystem;
-        }
-
-        @Override
-        public String getScheme() {
-            return "fake";
-        }
-
-        @Override
-        public FileSystem newFileSystem(URI uri, Map<String, ?> env) {
-            return fileSystem;
-        }
-
-        @Override
-        public FileSystem getFileSystem(URI uri) {
-            return fileSystem;
-        }
-
-        @Override
-        public Path getPath(URI uri) {
-            throw new UnsupportedOperationException("getPath");
-        }
-
-        @Override
-        public SeekableByteChannel newByteChannel(Path path,
-                                                  Set<? extends OpenOption> options,
-                                                  FileAttribute<?>... attrs) {
-            createdFiles.add(path);
-            return (SeekableByteChannel) Proxy.newProxyInstance(
-                    SeekableByteChannel.class.getClassLoader(),
-                    new Class<?>[]{SeekableByteChannel.class},
-                    (proxy, method, args) -> method.getName().equals("isOpen") ? Boolean.FALSE : null);
-        }
-
-        @Override
-        public DirectoryStream<Path> newDirectoryStream(Path dir,
-                                                        DirectoryStream.Filter<? super Path> filter) {
-            throw new UnsupportedOperationException("newDirectoryStream");
-        }
-
-        @Override
-        public void createDirectory(Path dir, FileAttribute<?>... attrs) {
-            createdDirectories.add(dir);
-        }
-
-        @Override
-        public void delete(Path path) throws IOException {
-            deleteIfExists(path);
-        }
-
-        @Override
-        public boolean deleteIfExists(Path path) throws IOException {
-            if (failDelete) {
-                throw new IOException("cleanup failure");
-            }
-            deletedFiles.add(path);
-            return true;
-        }
-
-        @Override
-        public void copy(Path source, Path target, CopyOption... options) {
-            throw new UnsupportedOperationException("copy");
-        }
-
-        @Override
-        public void move(Path source, Path target, CopyOption... options) {
-            throw new UnsupportedOperationException("move");
-        }
-
-        @Override
-        public boolean isSameFile(Path path, Path path2) {
-            return path == path2;
-        }
-
-        @Override
-        public boolean isHidden(Path path) {
-            return false;
-        }
-
-        @Override
-        public FileStore getFileStore(Path path) {
-            throw new UnsupportedOperationException("getFileStore");
-        }
-
-        @Override
-        public void checkAccess(Path path, AccessMode... modes) {
-        }
-
-        @Override
-        public <V extends FileAttributeView> V getFileAttributeView(Path path, Class<V> type,
-                                                                    LinkOption... options) {
-            throw new UnsupportedOperationException("getFileAttributeView");
-        }
-
-        @Override
-        public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type,
-                                                                LinkOption... options) {
-            throw new UnsupportedOperationException("readAttributes");
-        }
-
-        @Override
-        public Map<String, Object> readAttributes(Path path, String attributes,
-                                                  LinkOption... options) {
-            throw new UnsupportedOperationException("readAttributes");
-        }
-
-        @Override
-        public void setAttribute(Path path, String attribute, Object value,
-                                 LinkOption... options) {
-            throw new UnsupportedOperationException("setAttribute");
-        }
-    }
-
     private static Path reserveAvailablePath(Path requested) throws Exception {
-        Method method = PdfReportExporter.class.getDeclaredMethod(
-                "reserveAvailablePath", Path.class);
-        method.setAccessible(true);
-        try {
-            return (Path) method.invoke(null, requested);
-        } catch (InvocationTargetException e) {
-            throw e.getCause() instanceof Exception cause ? cause : e;
-        }
+        return (Path) invokePrivate("reserveAvailablePath", new Class<?>[]{Path.class}, requested);
     }
 
     private static String describeResult(IGame.ShotResult result) throws Exception {
-        Method method = PdfReportExporter.class.getDeclaredMethod(
-                "describeResult", IGame.ShotResult.class);
-        method.setAccessible(true);
-        try {
-            return (String) method.invoke(null, result);
-        } catch (InvocationTargetException e) {
-            throw e.getCause() instanceof Exception cause ? cause : e;
-        }
+        return (String) invokePrivate("describeResult", new Class<?>[]{IGame.ShotResult.class}, result);
     }
 
     private static void writeLine(PDPageContentStream content, String text, PDFont font,
                                   float size, float y) throws Exception {
-        Method method = PdfReportExporter.class.getDeclaredMethod(
-                "writeLine", PDPageContentStream.class, String.class,
-                PDFont.class, float.class, float.class);
-        method.setAccessible(true);
-        try {
-            method.invoke(null, content, text, font, size, y);
-        } catch (InvocationTargetException e) {
-            throw e.getCause() instanceof Exception cause ? cause : e;
-        }
+        invokePrivate("writeLine", new Class<?>[]{PDPageContentStream.class, String.class,
+                PDFont.class, float.class, float.class}, content, text, font, size, y);
     }
 }
