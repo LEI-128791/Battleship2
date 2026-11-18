@@ -1,0 +1,437 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > PdfReportExporter</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">battleship</a>
+</div>
+
+<h1>Coverage Summary for Class: PdfReportExporter (battleship)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">PdfReportExporter</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (5/5)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (38/38)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (99/99)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">PdfReportExporter$MoveReport</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (2/2)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (3/3)
+  </span>
+</td>
+  </tr>
+  <tr>
+    <td class="name">PdfReportExporter$ReportLine</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+  </tr>
+  <tr>
+    <td class="name">PdfReportExporter$ShotReport</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (2/2)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (4/4)
+  </span>
+</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (10/10)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (38/38)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (107/107)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;
+&nbsp;package battleship;
+&nbsp;
+&nbsp;import org.apache.pdfbox.pdmodel.PDDocument;
+&nbsp;import org.apache.pdfbox.pdmodel.PDPage;
+&nbsp;import org.apache.pdfbox.pdmodel.PDPageContentStream;
+&nbsp;import org.apache.pdfbox.pdmodel.common.PDRectangle;
+&nbsp;import org.apache.pdfbox.pdmodel.font.PDFont;
+&nbsp;import org.apache.pdfbox.pdmodel.font.PDType1Font;
+&nbsp;import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+&nbsp;
+&nbsp;import java.io.IOException;
+&nbsp;import java.nio.file.Files;
+&nbsp;import java.nio.file.Path;
+&nbsp;import java.util.ArrayList;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Objects;
+&nbsp;import java.nio.file.FileAlreadyExistsException;
+&nbsp;
+&nbsp;public final class PdfReportExporter {
+&nbsp;
+<b class="fc">&nbsp;    public record ShotReport(String coordinate, String outcome) {</b>
+<b class="fc">&nbsp;        public ShotReport {</b>
+<b class="fc">&nbsp;            Objects.requireNonNull(coordinate);</b>
+<b class="fc">&nbsp;            Objects.requireNonNull(outcome);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+<b class="fc">&nbsp;    public record MoveReport(int number, List&lt;ShotReport&gt; shots) {</b>
+<b class="fc">&nbsp;        public MoveReport {</b>
+<b class="fc">&nbsp;            shots = List.copyOf(shots);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    private static final float LEFT_MARGIN = 50;
+&nbsp;    private static final float FIRST_LINE_Y = 790;
+&nbsp;    private static final float LINE_HEIGHT = 15;
+&nbsp;    private static final int LINES_PER_PAGE = 45;
+&nbsp;
+&nbsp;    private PdfReportExporter() {
+&nbsp;    }
+&nbsp;
+&nbsp;    public static Path export(List&lt;IMove&gt; moves, Path outputPath)
+&nbsp;            throws IOException {
+&nbsp;
+<b class="fc">&nbsp;        Objects.requireNonNull(moves, &quot;moves cannot be null&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        List&lt;MoveReport&gt; reports = new ArrayList&lt;&gt;();</b>
+&nbsp;
+<b class="fc">&nbsp;        for (IMove move : moves) {</b>
+<b class="fc">&nbsp;            List&lt;ShotReport&gt; shots = new ArrayList&lt;&gt;();</b>
+<b class="fc">&nbsp;            List&lt;IPosition&gt; positions = move.getShots();</b>
+<b class="fc">&nbsp;            List&lt;IGame.ShotResult&gt; results = move.getShotResults();</b>
+&nbsp;
+<b class="fc">&nbsp;            for (int i = 0; i &lt; positions.size(); i++) {</b>
+<b class="fc">&nbsp;                IPosition position = positions.get(i);</b>
+&nbsp;
+<b class="fc">&nbsp;                String outcome = i &lt; results.size()</b>
+<b class="fc">&nbsp;                        ? describeResult(results.get(i))</b>
+<b class="fc">&nbsp;                        : &quot;Resultado nao disponivel&quot;;</b>
+&nbsp;
+<b class="fc">&nbsp;                String coordinate = &quot;&quot;</b>
+<b class="fc">&nbsp;                        + position.getClassicRow()</b>
+<b class="fc">&nbsp;                        + position.getClassicColumn();</b>
+&nbsp;
+<b class="fc">&nbsp;                shots.add(new ShotReport(coordinate, outcome));</b>
+&nbsp;            }
+&nbsp;
+<b class="fc">&nbsp;            reports.add(new MoveReport(move.getNumber(), shots));</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        return exportHistory(reports, outputPath);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private static Path reserveAvailablePath(Path requestedPath)
+&nbsp;            throws IOException {
+&nbsp;
+<b class="fc">&nbsp;        Path parent = requestedPath.getParent();</b>
+<b class="fc">&nbsp;        String fileName = requestedPath.getFileName().toString();</b>
+&nbsp;
+<b class="fc">&nbsp;        int extensionIndex = fileName.lastIndexOf(&#39;.&#39;);</b>
+<b class="fc">&nbsp;        String baseName = extensionIndex &gt; 0</b>
+<b class="fc">&nbsp;                ? fileName.substring(0, extensionIndex)</b>
+<b class="fc">&nbsp;                : fileName;</b>
+<b class="fc">&nbsp;        String extension = extensionIndex &gt; 0</b>
+<b class="fc">&nbsp;                ? fileName.substring(extensionIndex)</b>
+<b class="fc">&nbsp;                : &quot;&quot;;</b>
+&nbsp;
+<b class="fc">&nbsp;        int suffix = 0;</b>
+&nbsp;
+&nbsp;        while (true) {
+<b class="fc">&nbsp;            String candidateName = suffix == 0</b>
+<b class="fc">&nbsp;                    ? fileName</b>
+<b class="fc">&nbsp;                    : baseName + &quot;-&quot; + suffix + extension;</b>
+&nbsp;
+<b class="fc">&nbsp;            Path candidate = parent.resolve(candidateName);</b>
+&nbsp;
+&nbsp;            try {
+<b class="fc">&nbsp;                return Files.createFile(candidate);</b>
+&nbsp;            } catch (FileAlreadyExistsException e) {
+<b class="fc">&nbsp;                suffix++;</b>
+&nbsp;            }
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    public static Path exportHistory(
+&nbsp;            List&lt;MoveReport&gt; moves, Path outputPath) throws IOException {
+&nbsp;
+<b class="fc">&nbsp;        Objects.requireNonNull(moves, &quot;moves cannot be null&quot;);</b>
+<b class="fc">&nbsp;        Objects.requireNonNull(outputPath, &quot;outputPath cannot be null&quot;);</b>
+&nbsp;
+<b class="fc">&nbsp;        Path absolutePath = outputPath.toAbsolutePath();</b>
+<b class="fc">&nbsp;        Path parent = absolutePath.getParent();</b>
+&nbsp;
+<b class="fc">&nbsp;        if (parent != null) {</b>
+<b class="fc">&nbsp;            Files.createDirectories(parent);</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        List&lt;ReportLine&gt; lines = new ArrayList&lt;&gt;();</b>
+&nbsp;
+<b class="fc">&nbsp;        if (moves.isEmpty()) {</b>
+<b class="fc">&nbsp;            lines.add(new ReportLine(</b>
+&nbsp;                    &quot;Nao existem jogadas registadas.&quot;, false));
+&nbsp;        } else {
+<b class="fc">&nbsp;            for (MoveReport move : moves) {</b>
+<b class="fc">&nbsp;                lines.add(new ReportLine(</b>
+<b class="fc">&nbsp;                        &quot;Jogada &quot; + move.number(), true));</b>
+&nbsp;
+<b class="fc">&nbsp;                for (ShotReport shot : move.shots()) {</b>
+<b class="fc">&nbsp;                    lines.add(new ReportLine(</b>
+<b class="fc">&nbsp;                            &quot;Tiro &quot; + shot.coordinate()</b>
+<b class="fc">&nbsp;                                    + &quot;: &quot; + shot.outcome(),</b>
+&nbsp;                            false));
+&nbsp;                }
+&nbsp;
+<b class="fc">&nbsp;                lines.add(new ReportLine(&quot;&quot;, false));</b>
+&nbsp;            }
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        PDFont regularFont = new PDType1Font(</b>
+&nbsp;                Standard14Fonts.FontName.HELVETICA);
+<b class="fc">&nbsp;        PDFont boldFont = new PDType1Font(</b>
+&nbsp;                Standard14Fonts.FontName.HELVETICA_BOLD);
+&nbsp;
+<b class="fc">&nbsp;        try (PDDocument document = new PDDocument()) {</b>
+<b class="fc">&nbsp;            int pageCount = Math.max(1,</b>
+<b class="fc">&nbsp;                    (int) Math.ceil(</b>
+<b class="fc">&nbsp;                            (double) lines.size() / LINES_PER_PAGE));</b>
+&nbsp;
+<b class="fc">&nbsp;            for (int pageIndex = 0;</b>
+<b class="fc">&nbsp;                 pageIndex &lt; pageCount;</b>
+<b class="fc">&nbsp;                 pageIndex++) {</b>
+&nbsp;
+<b class="fc">&nbsp;                PDPage page = new PDPage(PDRectangle.A4);</b>
+<b class="fc">&nbsp;                document.addPage(page);</b>
+&nbsp;
+<b class="fc">&nbsp;                try (PDPageContentStream content =</b>
+&nbsp;                             new PDPageContentStream(document, page)) {
+&nbsp;
+<b class="fc">&nbsp;                    float y = FIRST_LINE_Y;</b>
+&nbsp;
+<b class="fc">&nbsp;                    writeLine(content,</b>
+&nbsp;                            &quot;Historico de jogadas - Batalha Naval&quot;,
+&nbsp;                            boldFont, 16, y);
+&nbsp;
+<b class="fc">&nbsp;                    y -= 30;</b>
+&nbsp;
+<b class="fc">&nbsp;                    if (pageIndex &gt; 0) {</b>
+<b class="fc">&nbsp;                        writeLine(content, &quot;Continuacao&quot;,</b>
+&nbsp;                                boldFont, 12, y);
+<b class="fc">&nbsp;                        y -= LINE_HEIGHT * 2;</b>
+&nbsp;                    }
+&nbsp;
+<b class="fc">&nbsp;                    int start = pageIndex * LINES_PER_PAGE;</b>
+<b class="fc">&nbsp;                    int end = Math.min(</b>
+<b class="fc">&nbsp;                            start + LINES_PER_PAGE, lines.size());</b>
+&nbsp;
+<b class="fc">&nbsp;                    for (int i = start; i &lt; end; i++) {</b>
+<b class="fc">&nbsp;                        ReportLine line = lines.get(i);</b>
+&nbsp;
+<b class="fc">&nbsp;                        if (!line.text().isEmpty()) {</b>
+<b class="fc">&nbsp;                            PDFont font = line.heading()</b>
+<b class="fc">&nbsp;                                    ? boldFont : regularFont;</b>
+&nbsp;
+<b class="fc">&nbsp;                            writeLine(content, line.text(),</b>
+&nbsp;                                    font, 11, y);
+&nbsp;                        }
+&nbsp;
+<b class="fc">&nbsp;                        y -= LINE_HEIGHT;</b>
+&nbsp;                    }
+&nbsp;                }
+&nbsp;            }
+&nbsp;
+<b class="fc">&nbsp;            Path actualPath = reserveAvailablePath(absolutePath);</b>
+&nbsp;
+&nbsp;            try {
+<b class="fc">&nbsp;                document.save(actualPath.toFile());</b>
+<b class="fc">&nbsp;                return actualPath;</b>
+&nbsp;            } catch (IOException | RuntimeException e) {
+&nbsp;                try {
+<b class="fc">&nbsp;                    Files.deleteIfExists(actualPath);</b>
+&nbsp;                } catch (IOException cleanupException) {
+<b class="fc">&nbsp;                    e.addSuppressed(cleanupException);</b>
+&nbsp;                }
+&nbsp;
+&nbsp;                throw e;
+&nbsp;            }
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    private static String describeResult(IGame.ShotResult result) {
+<b class="fc">&nbsp;        if (!result.valid()) {</b>
+<b class="fc">&nbsp;            return &quot;Tiro invalido&quot;;</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        if (result.repeated()) {</b>
+<b class="fc">&nbsp;            return &quot;Tiro repetido&quot;;</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        if (result.ship() == null) {</b>
+<b class="fc">&nbsp;            return &quot;Agua&quot;;</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        if (result.sunk()) {</b>
+<b class="fc">&nbsp;            return &quot;Navio afundado (&quot;</b>
+<b class="fc">&nbsp;                    + result.ship().getCategory() + &quot;)&quot;;</b>
+&nbsp;        }
+&nbsp;
+<b class="fc">&nbsp;        return &quot;Navio atingido (&quot;</b>
+<b class="fc">&nbsp;                + result.ship().getCategory() + &quot;)&quot;;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private static void writeLine(
+&nbsp;            PDPageContentStream content,
+&nbsp;            String text,
+&nbsp;            PDFont font,
+&nbsp;            float fontSize,
+&nbsp;            float y) throws IOException {
+&nbsp;
+<b class="fc">&nbsp;        content.beginText();</b>
+<b class="fc">&nbsp;        content.setFont(font, fontSize);</b>
+<b class="fc">&nbsp;        content.newLineAtOffset(LEFT_MARGIN, y);</b>
+<b class="fc">&nbsp;        content.showText(text);</b>
+<b class="fc">&nbsp;        content.endText();</b>
+&nbsp;    }
+&nbsp;
+<b class="fc">&nbsp;    private record ReportLine(String text, boolean heading) {</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2026-11-18 20:45</div>
+</div>
+</body>
+</html>
