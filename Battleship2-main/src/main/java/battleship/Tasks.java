@@ -151,10 +151,9 @@ public class Tasks {
 
 	private static void exportarHistorico(IGame game, Path outputPath) {
 		try {
-			Path actualPath = PdfReportExporter.export(
-					game.getAlienMoves(), outputPath);
-			System.out.println(Messages.get("pdf.export.success")
-					+ " " + actualPath.toAbsolutePath());
+            System.out.println(Messages.get("pdf.export.success")
+					+ " " + PdfReportExporter.export(
+                            game.getAlienMoves(), outputPath).toAbsolutePath());
 		} catch (IOException e) {
 			LOGGER.error(Messages.get("pdf.export.logError"), e);
 			System.out.println(Messages.get("pdf.export.error")
