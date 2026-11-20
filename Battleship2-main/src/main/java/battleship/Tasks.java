@@ -134,17 +134,7 @@ public class Tasks {
 				if (game == null) {
 					System.out.println(Messages.get("game.createFleet"));
 				} else {
-					Path outputPath = Path.of("battleship-history.pdf");
-					try {
-						Path actualPath = PdfReportExporter.export(
-								game.getAlienMoves(), outputPath);
-						System.out.println(Messages.get("pdf.export.success")
-								+ " " + actualPath.toAbsolutePath());
-					} catch (IOException e) {
-						LOGGER.error(Messages.get("pdf.export.logError"), e);
-						System.out.println(Messages.get("pdf.export.error")
-								+ " " + e.getMessage());
-					}
+					exportarHistorico(game);
 				}
 
 			} else {
@@ -155,6 +145,20 @@ public class Tasks {
 			command = in.next();
 		}
 		System.out.println(Messages.get("game.goodbye"));
+	}
+
+	private static void exportarHistorico(IGame game) {
+		Path outputPath = Path.of("battleship-history.pdf");
+		try {
+			Path actualPath = PdfReportExporter.export(
+					game.getAlienMoves(), outputPath);
+			System.out.println(Messages.get("pdf.export.success")
+					+ " " + actualPath.toAbsolutePath());
+		} catch (IOException e) {
+			LOGGER.error(Messages.get("pdf.export.logError"), e);
+			System.out.println(Messages.get("pdf.export.error")
+					+ " " + e.getMessage());
+		}
 	}
 
 	/**
