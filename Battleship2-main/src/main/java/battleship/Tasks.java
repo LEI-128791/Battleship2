@@ -22,6 +22,8 @@ public class Tasks {
 	 * The constant GOODBYE_MESSAGE.
 	 */
 	private static final String GOODBYE_MESSAGE = "Bons ventos!";
+	private static final String PROMPT = "> ";
+	private static final String PDF_FILE_NAME = "battleship-history.pdf";
 
 	/**
 	 * Strings to be used by the user
@@ -68,7 +70,7 @@ public class Tasks {
 
 		menuHelp();
 
-		System.out.print("> ");
+		System.out.print(PROMPT);
 		String command = in.next();
 
 		while (!command.equals(DESISTIR)) {
@@ -141,14 +143,14 @@ public class Tasks {
 				System.out.println(Messages.get("game.unknownCommand"));
 			}
 
-			System.out.print("> ");
+			System.out.print(PROMPT);
 			command = in.next();
 		}
 		System.out.println(Messages.get("game.goodbye"));
 	}
 
 	private static void exportarHistorico(IGame game) {
-		Path outputPath = Path.of("battleship-history.pdf");
+		Path outputPath = Path.of(PDF_FILE_NAME);
 		try {
 			Path actualPath = PdfReportExporter.export(
 					game.getAlienMoves(), outputPath);
