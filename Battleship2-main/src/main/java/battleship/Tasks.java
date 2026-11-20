@@ -136,7 +136,7 @@ public class Tasks {
 				if (game == null) {
 					System.out.println(Messages.get("game.createFleet"));
 				} else {
-					exportarHistorico(game);
+					exportarHistorico(game, Path.of(PDF_FILE_NAME));
 				}
 
 			} else {
@@ -149,8 +149,7 @@ public class Tasks {
 		System.out.println(Messages.get("game.goodbye"));
 	}
 
-	private static void exportarHistorico(IGame game) {
-		Path outputPath = Path.of(PDF_FILE_NAME);
+	private static void exportarHistorico(IGame game, Path outputPath) {
 		try {
 			Path actualPath = PdfReportExporter.export(
 					game.getAlienMoves(), outputPath);
