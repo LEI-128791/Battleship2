@@ -224,13 +224,7 @@ public class Fleet implements IFleet
 		System.out.println(MessageFormat.format(Messages.get("fleet.status"),
 				this.getFloatingShips().size(),
 				this.getSunkShips().size()));
-//		printAllShips();
-//		printFloatingShips();
-//		printShipsByCategory("Galeao");
-//		printShipsByCategory("Fragata");
-//		printShipsByCategory("Nau");
-//		printShipsByCategory("Caravela");
-//		printShipsByCategory("Barca");
+
     }
 
 	/**
