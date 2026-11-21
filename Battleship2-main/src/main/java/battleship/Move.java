@@ -3,6 +3,8 @@ package battleship;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.jetbrains.annotations.NotNull;
+
 import java.text.MessageFormat;
 
 import java.util.*;
@@ -20,6 +22,9 @@ public class Move implements IMove {
 	private final int number;
 	private final List<IPosition> shots;
 	private final List<IGame.ShotResult> shotResults;
+	private int validShots;
+	private int repeatedShots;
+	private int missedShots;
 
 	//-------------------------------------------------------------------
 	public Move(int moveNumber, List<IPosition> moveShots, List<IGame.ShotResult> moveResults) {
@@ -83,14 +88,47 @@ public class Move implements IMove {
 	@Override
 	public String processEnemyFire(boolean verbose) {
 
-		int validShots = 0;
-		int repeatedShots = 0;
-		int missedShots = 0;
+		validShots = 0;
+		repeatedShots = 0;
+		missedShots = 0;
 
 		Map<String, Integer> sunkBoatsCount = new HashMap<>(); // Rastrear quantos navios de cada tipo afundaram
 		Map<String, Integer> hitsPerBoat = new HashMap<>();
 
 
+		countShots(hitsPerBoat, sunkBoatsCount);
+
+		// Determinar número de tiros fora do tabuleiro
+		int outsideShots = Game.NUMBER_SHOTS - validShots - repeatedShots;
+
+		if (verbose) {
+			StringBuilder output = buildMessage(sunkBoatsCount, hitsPerBoat, outsideShots);
+
+			System.out.println(msg("move.header", this.number, output));
+		}
+
+		Map<String, Object> response = buildJson(outsideShots, sunkBoatsCount, hitsPerBoat);
+		// Serializar o JSON utilizando Jackson
+		String jsonString;
+
+		// Serializar os tiros gerados em JSON usando a biblioteca Jackson
+		ObjectMapper objectMapper = new ObjectMapper();
+		objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+
+		try {
+			jsonString = objectMapper.writeValueAsString(response);
+		} catch (JsonProcessingException e) {
+			throw new RuntimeException("Erro ao serializar o JSON dos resultados da jogada", e);
+		}
+
+		System.out.println(jsonString);
+		System.out.println();
+
+		// Retornar o JSON
+		return jsonString;
+	}
+
+	private void countShots(Map<String, Integer> hitsPerBoat, Map<String, Integer> sunkBoatsCount) {
 		// Processar cada resultado de tiro
 		for (IGame.ShotResult result : this.shotResults) {
 			if (!result.valid()) {
@@ -113,58 +151,9 @@ public class Move implements IMove {
 				}
 			}
 		}
+	}
 
-		// Determinar número de tiros fora do tabuleiro
-		int outsideShots = Game.NUMBER_SHOTS - validShots - repeatedShots;
-
-		if (verbose) {
-			// Construção da mensagem de saída
-			StringBuilder output = new StringBuilder();
-
-			if (validShots == 0 && repeatedShots > 0) {
-				output.append(msg("move.repeated", repeatedShots));
-			} else {
-				if (validShots > 0) {
-					output.append(msg("move.validShots", validShots)).append(": ");
-				}
-
-				// Barcos afundados (conta múltiplos do mesmo tipo)
-				for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
-					output.append(msg("move.sunk", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
-				}
-
-				// Acertos em barcos ainda a flutuar
-				for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
-					if (!sunkBoatsCount.containsKey(entry.getKey())) {
-						output.append(msg("move.hits", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
-					}
-				}
-
-				if (missedShots > 0) {
-					output.append(msg("move.missed", missedShots));
-				} else if (!sunkBoatsCount.isEmpty() || !hitsPerBoat.isEmpty()) {
-					output.setLength(output.length() - 2); // Remover o "+" final
-				}
-
-				if (repeatedShots > 0) {
-					if (validShots > 0) {
-						output.append(", ");
-					}
-					output.append(msg("move.repeated", repeatedShots));
-				}
-			}
-
-			// Tiros fora do tabuleiro
-			if (outsideShots > 0) {
-				if (!output.isEmpty()) {
-					output.append(", ");
-				}
-				output.append(msg("move.outside", outsideShots));
-			}
-
-			System.out.println(msg("move.header", this.number, output));
-		}
-
+	private @NotNull Map<String, Object> buildJson(int outsideShots, Map<String, Integer> sunkBoatsCount, Map<String, Integer> hitsPerBoat) {
 		// Criar o mapa para o JSON
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put(Messages.get("json.validShots"), validShots);
@@ -173,45 +162,73 @@ public class Move implements IMove {
 		response.put(Messages.get("json.missedShots"), missedShots);
 
 		// Criar a lista de barcos afundados
-		List<Map<String, Object>> sunkBoats = new ArrayList<>();
-		for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
-			Map<String, Object> boat = new LinkedHashMap<>();
-			boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
-			boat.put(Messages.get("json.count"), entry.getValue());
-			sunkBoats.add(boat);
-		}
+		List<Map<String, Object>> sunkBoats = buildBoatList(sunkBoatsCount, Collections.emptyMap(), "json.count");
 		response.put(Messages.get("json.sunkBoats"), sunkBoats);
 
 		// Criar a lista de acertos em barcos que não foram afundados
-		List<Map<String, Object>> boatHits = new ArrayList<>();
-		for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
-			if (!sunkBoatsCount.containsKey(entry.getKey())) {
-				Map<String, Object> boat = new LinkedHashMap<>();
-				boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
-				boat.put(Messages.get("json.hits"), entry.getValue());
-				boatHits.add(boat);
+		List<Map<String, Object>> boatHits = buildBoatList(hitsPerBoat, sunkBoatsCount, "json.hits");
+		response.put(Messages.get("json.hitsOnBoats"), boatHits);
+		return response;
+	}
+
+	private static @NotNull List<Map<String, Object>> buildBoatList(Map<String, Integer> counts, Map<String, Integer> excluded, String countKey) {
+		List<Map<String, Object>> sunkBoats = new ArrayList<>();
+		for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+			if (excluded.containsKey(entry.getKey()))
+				continue;
+			Map<String, Object> boat = new LinkedHashMap<>();
+			boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
+			boat.put(Messages.get(countKey), entry.getValue());
+			sunkBoats.add(boat);
+		}
+		return sunkBoats;
+	}
+
+	private @NotNull StringBuilder buildMessage(Map<String, Integer> sunkBoatsCount, Map<String, Integer> hitsPerBoat, int outsideShots) {
+		// Construção da mensagem de saída
+		StringBuilder output = new StringBuilder();
+
+		if (validShots == 0 && repeatedShots > 0) {
+			output.append(msg("move.repeated", repeatedShots));
+		} else {
+			if (validShots > 0) {
+				output.append(msg("move.validShots", validShots)).append(": ");
+			}
+
+			// Barcos afundados (conta múltiplos do mesmo tipo)
+			for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
+				output.append(msg("move.sunk", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
+			}
+
+			// Acertos em barcos ainda a flutuar
+			for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
+				if (!sunkBoatsCount.containsKey(entry.getKey())) {
+					output.append(msg("move.hits", entry.getValue(), categoryName(entry.getKey()))).append(" + ");
+				}
+			}
+
+			if (missedShots > 0) {
+				output.append(msg("move.missed", missedShots));
+			} else if (!sunkBoatsCount.isEmpty() || !hitsPerBoat.isEmpty()) {
+				output.setLength(output.length() - 2); // Remover o "+" final
+			}
+
+			if (repeatedShots > 0) {
+				if (validShots > 0) {
+					output.append(", ");
+				}
+				output.append(msg("move.repeated", repeatedShots));
 			}
 		}
-		response.put(Messages.get("json.hitsOnBoats"), boatHits);
 
-		// Serializar o JSON utilizando Jackson
-		String jsonString;
-
-		// Serializar os tiros gerados em JSON usando a biblioteca Jackson
-		ObjectMapper objectMapper = new ObjectMapper();
-		objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-
-		try {
-			jsonString = objectMapper.writeValueAsString(response);
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException("Erro ao serializar o JSON dos resultados da jogada", e);
+		// Tiros fora do tabuleiro
+		if (outsideShots > 0) {
+			if (!output.isEmpty()) {
+				output.append(", ");
+			}
+			output.append(msg("move.outside", outsideShots));
 		}
-
-		System.out.println(jsonString);
-		System.out.println();
-
-		// Retornar o JSON
-		return jsonString;
+		return output;
 	}
 
 }
