@@ -152,27 +152,26 @@ public class Move implements IMove {
 		response.put(Messages.get("json.missedShots"), missedShots);
 
 		// Criar a lista de barcos afundados
-		List<Map<String, Object>> sunkBoats = new ArrayList<>();
-		for (Map.Entry<String, Integer> entry : sunkBoatsCount.entrySet()) {
-			Map<String, Object> boat = new LinkedHashMap<>();
-			boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
-			boat.put(Messages.get("json.count"), entry.getValue());
-			sunkBoats.add(boat);
-		}
+		List<Map<String, Object>> sunkBoats = buildBoatList(sunkBoatsCount, Collections.emptyMap(), "json.count");
 		response.put(Messages.get("json.sunkBoats"), sunkBoats);
 
 		// Criar a lista de acertos em barcos que não foram afundados
-		List<Map<String, Object>> boatHits = new ArrayList<>();
-		for (Map.Entry<String, Integer> entry : hitsPerBoat.entrySet()) {
-			if (!sunkBoatsCount.containsKey(entry.getKey())) {
-				Map<String, Object> boat = new LinkedHashMap<>();
-				boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
-				boat.put(Messages.get("json.hits"), entry.getValue());
-				boatHits.add(boat);
-			}
-		}
+		List<Map<String, Object>> boatHits = buildBoatList(hitsPerBoat, sunkBoatsCount, "json.hits");
 		response.put(Messages.get("json.hitsOnBoats"), boatHits);
 		return response;
+	}
+
+	private static @NotNull List<Map<String, Object>> buildBoatList(Map<String, Integer> counts, Map<String, Integer> excluded, String countKey) {
+		List<Map<String, Object>> sunkBoats = new ArrayList<>();
+		for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+			if (excluded.containsKey(entry.getKey()))
+				continue;
+			Map<String, Object> boat = new LinkedHashMap<>();
+			boat.put(Messages.get("json.type"), categoryName(entry.getKey()));
+			boat.put(Messages.get(countKey), entry.getValue());
+			sunkBoats.add(boat);
+		}
+		return sunkBoats;
 	}
 
 	private static @NotNull StringBuilder buildMessage(int validShots, int repeatedShots, Map<String, Integer> sunkBoatsCount, Map<String, Integer> hitsPerBoat, int missedShots, int outsideShots) {
