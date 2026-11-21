@@ -20,6 +20,12 @@ import java.nio.file.FileAlreadyExistsException;
 
 public final class PdfReportExporter {
 
+    public static final String MOVE_PREFIX = "Jogada ";
+    public static final String SHOT_PREFIX = "Tiro ";
+    public static final int TITLE_FONT_SIZE = 16;
+    public static final int SUBTITLE_FONT_SIZE = 12;
+    public static final int BODY_FONT_SIZE = 11;
+
     public record ShotReport(String coordinate, String outcome) {
         public ShotReport {
             Objects.requireNonNull(coordinate);
@@ -164,13 +170,13 @@ public final class PdfReportExporter {
 
             writeLine(content,
                     "Historico de jogadas - Batalha Naval",
-                    boldFont, 16, y);
+                    boldFont, TITLE_FONT_SIZE, y);
 
             y -= 30;
 
             if (pageIndex > 0) {
                 writeLine(content, "Continuacao",
-                        boldFont, 12, y);
+                        boldFont, SUBTITLE_FONT_SIZE, y);
                 y -= LINE_HEIGHT * 2;
             }
 
@@ -186,7 +192,7 @@ public final class PdfReportExporter {
                             ? boldFont : regularFont;
 
                     writeLine(content, line.text(),
-                            font, 11, y);
+                            font, BODY_FONT_SIZE, y);
                 }
 
                 y -= LINE_HEIGHT;
@@ -203,11 +209,11 @@ public final class PdfReportExporter {
         } else {
             for (MoveReport move : moves) {
                 lines.add(new ReportLine(
-                        "Jogada " + move.number(), true));
+                        MOVE_PREFIX + move.number(), true));
 
                 for (ShotReport shot : move.shots()) {
                     lines.add(new ReportLine(
-                            "Tiro " + shot.coordinate()
+                            SHOT_PREFIX + shot.coordinate()
                                     + ": " + shot.outcome(),
                             false));
                 }
