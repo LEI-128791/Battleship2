@@ -8,6 +8,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,6 +19,12 @@ import java.util.Objects;
 import java.nio.file.FileAlreadyExistsException;
 
 public final class PdfReportExporter {
+
+    public static final String MOVE_PREFIX = "Jogada ";
+    public static final String SHOT_PREFIX = "Tiro ";
+    public static final int TITLE_FONT_SIZE = 16;
+    public static final int SUBTITLE_FONT_SIZE = 12;
+    public static final int BODY_FONT_SIZE = 11;
 
     public record ShotReport(String coordinate, String outcome) {
         public ShotReport {
@@ -59,9 +66,7 @@ public final class PdfReportExporter {
                         ? describeResult(results.get(i))
                         : "Resultado nao disponivel";
 
-                String coordinate = ""
-                        + position.getClassicRow()
-                        + position.getClassicColumn();
+                String coordinate = coordinateOf(position);
 
                 shots.add(new ShotReport(coordinate, outcome));
             }
@@ -70,6 +75,12 @@ public final class PdfReportExporter {
         }
 
         return exportHistory(reports, outputPath);
+    }
+
+    private static @NotNull String coordinateOf(IPosition position) {
+        return ""
+                + position.getClassicRow()
+                + position.getClassicColumn();
     }
 
     private static Path reserveAvailablePath(Path requestedPath)
@@ -116,26 +127,7 @@ public final class PdfReportExporter {
             Files.createDirectories(parent);
         }
 
-        List<ReportLine> lines = new ArrayList<>();
-
-        if (moves.isEmpty()) {
-            lines.add(new ReportLine(
-                    "Nao existem jogadas registadas.", false));
-        } else {
-            for (MoveReport move : moves) {
-                lines.add(new ReportLine(
-                        "Jogada " + move.number(), true));
-
-                for (ShotReport shot : move.shots()) {
-                    lines.add(new ReportLine(
-                            "Tiro " + shot.coordinate()
-                                    + ": " + shot.outcome(),
-                            false));
-                }
-
-                lines.add(new ReportLine("", false));
-            }
-        }
+        List<ReportLine> lines = buildLines(moves);
 
         PDFont regularFont = new PDType1Font(
                 Standard14Fonts.FontName.HELVETICA);
@@ -151,44 +143,7 @@ public final class PdfReportExporter {
                  pageIndex < pageCount;
                  pageIndex++) {
 
-                PDPage page = new PDPage(PDRectangle.A4);
-                document.addPage(page);
-
-                try (PDPageContentStream content =
-                             new PDPageContentStream(document, page)) {
-
-                    float y = FIRST_LINE_Y;
-
-                    writeLine(content,
-                            "Historico de jogadas - Batalha Naval",
-                            boldFont, 16, y);
-
-                    y -= 30;
-
-                    if (pageIndex > 0) {
-                        writeLine(content, "Continuacao",
-                                boldFont, 12, y);
-                        y -= LINE_HEIGHT * 2;
-                    }
-
-                    int start = pageIndex * LINES_PER_PAGE;
-                    int end = Math.min(
-                            start + LINES_PER_PAGE, lines.size());
-
-                    for (int i = start; i < end; i++) {
-                        ReportLine line = lines.get(i);
-
-                        if (!line.text().isEmpty()) {
-                            PDFont font = line.heading()
-                                    ? boldFont : regularFont;
-
-                            writeLine(content, line.text(),
-                                    font, 11, y);
-                        }
-
-                        y -= LINE_HEIGHT;
-                    }
-                }
+                writePage(document, boldFont, pageIndex, lines, regularFont);
             }
 
             Path actualPath = reserveAvailablePath(absolutePath);
@@ -208,6 +163,71 @@ public final class PdfReportExporter {
         }
     }
 
+    private static void writePage(PDDocument document, PDFont boldFont, int pageIndex, List<ReportLine> lines, PDFont regularFont) throws IOException {
+        PDPage page = new PDPage(PDRectangle.A4);
+        document.addPage(page);
+
+        try (PDPageContentStream content =
+                     new PDPageContentStream(document, page)) {
+
+            float y = FIRST_LINE_Y;
+
+            writeLine(content,
+                    "Historico de jogadas - Batalha Naval",
+                    boldFont, TITLE_FONT_SIZE, y);
+
+            y -= 30;
+
+            if (pageIndex > 0) {
+                writeLine(content, "Continuacao",
+                        boldFont, SUBTITLE_FONT_SIZE, y);
+                y -= LINE_HEIGHT * 2;
+            }
+
+            int start = pageIndex * LINES_PER_PAGE;
+            int end = Math.min(
+                    start + LINES_PER_PAGE, lines.size());
+
+            for (int i = start; i < end; i++) {
+                ReportLine line = lines.get(i);
+
+                if (!line.text().isEmpty()) {
+                    PDFont font = line.heading()
+                            ? boldFont : regularFont;
+
+                    writeLine(content, line.text(),
+                            font, BODY_FONT_SIZE, y);
+                }
+
+                y -= LINE_HEIGHT;
+            }
+        }
+    }
+
+    private static @NotNull List<ReportLine> buildLines(List<MoveReport> moves) {
+        List<ReportLine> lines = new ArrayList<>();
+
+        if (moves.isEmpty()) {
+            lines.add(new ReportLine(
+                    "Nao existem jogadas registadas.", false));
+        } else {
+            for (MoveReport move : moves) {
+                lines.add(new ReportLine(
+                        MOVE_PREFIX + move.number(), true));
+
+                for (ShotReport shot : move.shots()) {
+                    lines.add(new ReportLine(
+                            SHOT_PREFIX + shot.coordinate()
+                                    + ": " + shot.outcome(),
+                            false));
+                }
+
+                lines.add(new ReportLine("", false));
+            }
+        }
+        return lines;
+    }
+
     private static String describeResult(IGame.ShotResult result) {
         if (!result.valid()) {
             return "Tiro invalido";
@@ -221,13 +241,14 @@ public final class PdfReportExporter {
             return "Agua";
         }
 
+        String category = result.ship().getCategory();
         if (result.sunk()) {
             return "Navio afundado ("
-                    + result.ship().getCategory() + ")";
+                    + category + ")";
         }
 
         return "Navio atingido ("
-                + result.ship().getCategory() + ")";
+                + category + ")";
     }
 
     private static void writeLine(

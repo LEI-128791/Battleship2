@@ -5,6 +5,8 @@ package battleship;
 
 public class Main
 {
+	public static final String TITLE = "***  Battleship  ***";
+
 	/**
 	 * Main.
 	 *
@@ -12,8 +14,9 @@ public class Main
 	 */
 	public static void main(String[] args)
     {
-		System.out.println("***  Battleship  ***");
+		System.out.println(TITLE);
 
 		Tasks.menu();
+
     }
 }
