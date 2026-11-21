@@ -38,14 +38,6 @@ public interface IPosition
 	int getClassicColumn();
 
 	/**
-	 * Equals boolean.
-	 *
-	 * @param other the other
-	 * @return the boolean
-	 */
-	boolean equals(Object other);
-
-	/**
 	 * Checks if the position is inside the board.
 	 *
 	 * @return true if the position is inside the board, false otherwise
