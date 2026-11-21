@@ -16,7 +16,7 @@ class IMoveTest {
     @Test
     void readMoveReadsShotsInInputOrder() {
         try (Scanner scanner = new Scanner("2 1 3 4 2 99")) {
-            IMove move = IMove.readMove(7, scanner);
+            IMove move = Move.readMove(7, scanner);
 
             assertEquals(7, move.getNumber());
             assertEquals(
@@ -31,7 +31,7 @@ class IMoveTest {
     @Test
     void readMoveWithZeroShotsLeavesNextValueUnread() {
         try (Scanner scanner = new Scanner("0 99")) {
-            IMove move = IMove.readMove(8, scanner);
+            IMove move = Move.readMove(8, scanner);
 
             assertEquals(8, move.getNumber());
             assertTrue(move.getShots().isEmpty());
@@ -44,7 +44,7 @@ class IMoveTest {
     void readMoveThrowsWhenShotCoordinateIsMissing() {
         try (Scanner scanner = new Scanner("1 3")) {
             assertThrows(NoSuchElementException.class,
-                    () -> IMove.readMove(9, scanner));
+                    () -> Move.readMove(9, scanner));
         }
     }
 
@@ -52,7 +52,7 @@ class IMoveTest {
     void readMoveThrowsWhenShotCoordinateIsNotAnInteger() {
         try (Scanner scanner = new Scanner("1 3 A")) {
             assertThrows(InputMismatchException.class,
-                    () -> IMove.readMove(9, scanner));
+                    () -> Move.readMove(9, scanner));
         }
     }
 }

@@ -39,16 +39,16 @@ public enum Compass
 	/**
 	 * The C.
 	 */
-	private final char c;
+	private final char direction;
 
 	/**
 	 * Instantiates a new Compass.
 	 *
-	 * @param c the c
+	 * @param direction the c
 	 */
-	Compass(char c)
+	Compass(char direction)
     {
-	this.c = c;
+	this.direction = direction;
     }
 
 	/**
@@ -58,7 +58,7 @@ public enum Compass
 	 */
 	public char getDirection()
     {
-	return c;
+	return direction;
     }
 
 	/**
@@ -69,7 +69,7 @@ public enum Compass
 	@Override
     public String toString()
     {
-	return "" + c;
+	return "" + direction;
     }
 
 	/**

@@ -6,12 +6,31 @@ package battleship;
 import java.util.ArrayList;
 import java.util.List;
 import java.text.MessageFormat;
+import java.util.function.Predicate;
 
 /**
  * The type Fleet.
  */
 public class Fleet implements IFleet
 {
+	private List<IShip> filterShips(Predicate<IShip> condition) {
+		List<IShip> filteredShips = new ArrayList<>();
+
+		for (IShip s : ships) {
+			if (condition.test(s)) {
+				filteredShips.add(s);
+			}
+		}
+
+		return filteredShips;
+	}
+
+	private static final String[] SHIP_TYPES = {"galeao",                           // 1 galleon
+			"fragata",                           // 1 frigate
+			"nau", "nau",                        // 2 carracks
+			"caravela", "caravela", "caravela",  // 3 caravels
+			"barca", "barca", "barca", "barca"};
+
 	/**
 	 * Creates a randomly generated fleet containing ships of various predefined types.
 	 * Each ship is assigned a random bearing and position. If a ship cannot be added
@@ -25,11 +44,7 @@ public class Fleet implements IFleet
 
 		// Define the types of ships to be added
 		String[] shipTypes =
-					{"galeao",                           // 1 galleon
-				 	"fragata",                           // 1 frigate
- 				 	"nau", "nau",                        // 2 carracks
-					"caravela", "caravela", "caravela",  // 3 caravels
-					"barca", "barca", "barca", "barca"}; // 4 barges
+				SHIP_TYPES; // 4 barges
 
 		int fleetSize = 0;
 
@@ -39,7 +54,7 @@ public class Fleet implements IFleet
 			Ship ship = Ship.buildShip(shipTypes[fleetSize], Compass.randomBearing(), Position.randomPosition());
 
 			// Attempt to add the ship to the fleet
-			if (ship != null && randomFleet.addShip(ship)) {
+			if (randomFleet.addShip(ship)) {
 				fleetSize++; // Increment count if ship is successfully added
 			}
 		}
@@ -91,7 +106,8 @@ public class Fleet implements IFleet
 		assert s != null;
 
 		boolean result = false;
-		if ((ships.size() <= FLEET_SIZE) && (s.isInsideBoard()) && (!colisionRisk(s)))
+		boolean canAdd = (ships.size() <= FLEET_SIZE) && (s.isInsideBoard()) && (!collisionRisk(s));
+		if (canAdd)
 		{
 			ships.add(s);
 			result = true;
@@ -110,19 +126,12 @@ public class Fleet implements IFleet
      * 
      * @see battleship.IFleet#getShipsLike(java.lang.String)
      */
-    @Override
-    public List<IShip> getShipsLike(String category)
-    {
+	@Override
+	public List<IShip> getShipsLike(String category) {
 		assert category != null;
 
-		List<IShip> shipsLike = new ArrayList<IShip>();
-		for (IShip s : ships)
-			if (s.getCategory().equals(category))
-				shipsLike.add(s);
-
-		return shipsLike;
-    }
-
+		return filterShips(s -> s.getCategory().equals(category));
+	}
 	/**
 	 * Gets floating ships.
 	 *
@@ -133,16 +142,11 @@ public class Fleet implements IFleet
      * 
      * @see battleship.IFleet#getFloatingShips()
      */
-    @Override
-    public List<IShip> getFloatingShips()
-    {
-		List<IShip> floatingShips = new ArrayList<IShip>();
-		for (IShip s : ships)
-			if (s.stillFloating())
-				floatingShips.add(s);
+	@Override
+	public List<IShip> getFloatingShips() {
+		return filterShips(s -> s.stillFloating());
+	}
 
-		return floatingShips;
-    }
 
 	/**
 	 * Gets sunk ships.
@@ -155,14 +159,8 @@ public class Fleet implements IFleet
 	 * @see battleship.IFleet#getSunkShips()
 	 */
 	@Override
-	public List<IShip> getSunkShips()
-	{
-		List<IShip> sunkShips = new ArrayList<IShip>();
-		for (IShip s : ships)
-			if (!s.stillFloating())
-				sunkShips.add(s);
-
-		return sunkShips;
+	public List<IShip> getSunkShips() {
+		return filterShips(s -> !s.stillFloating());
 	}
 
 	/**
@@ -193,7 +191,7 @@ public class Fleet implements IFleet
 	 * @param s the s
 	 * @return the boolean
 	 */
-	private boolean colisionRisk(IShip s)
+	private boolean collisionRisk(IShip s)
     {
 		assert s != null;
 
@@ -208,13 +206,13 @@ public class Fleet implements IFleet
 	/**
 	 * This operation prints all the given ships
 	 *
-	 * @param ships The list of ships
+	 * @param shipsToPrint The list of ships
 	 */
-	public void printShips(List<IShip> ships)
+	public void printShips(List<IShip> shipsToPrint)
 	{
-		assert ships != null;
+		assert shipsToPrint != null;
 
-		for (IShip ship : ships)
+		for (IShip ship : shipsToPrint)
 			System.out.println(ship);
 	}
 
@@ -226,13 +224,7 @@ public class Fleet implements IFleet
 		System.out.println(MessageFormat.format(Messages.get("fleet.status"),
 				this.getFloatingShips().size(),
 				this.getSunkShips().size()));
-//		printAllShips();
-//		printFloatingShips();
-//		printShipsByCategory("Galeao");
-//		printShipsByCategory("Fragata");
-//		printShipsByCategory("Nau");
-//		printShipsByCategory("Caravela");
-//		printShipsByCategory("Barca");
+
     }
 
 	/**
