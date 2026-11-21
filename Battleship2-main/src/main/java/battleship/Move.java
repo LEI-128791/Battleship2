@@ -91,13 +91,12 @@ public class Move implements IMove {
 		int outsideShots = Game.NUMBER_SHOTS - validShots - repeatedShots;
 
 		if (verbose) {
-			StringBuilder output = buildMessage(validShots, repeatedShots, sunkBoatsCount, hitsPerBoat, missedShots, outsideShots);
+			StringBuilder output = buildMessage(sunkBoatsCount, hitsPerBoat, outsideShots);
 
 			System.out.println(msg("move.header", this.number, output));
 		}
 
-		Map<String, Object> response = buildJson(validShots, outsideShots, repeatedShots, missedShots, sunkBoatsCount, hitsPerBoat);
-
+		Map<String, Object> response = buildJson(outsideShots, sunkBoatsCount, hitsPerBoat);
 		// Serializar o JSON utilizando Jackson
 		String jsonString;
 
@@ -143,7 +142,7 @@ public class Move implements IMove {
 		}
 	}
 
-	private static @NotNull Map<String, Object> buildJson(int validShots, int outsideShots, int repeatedShots, int missedShots, Map<String, Integer> sunkBoatsCount, Map<String, Integer> hitsPerBoat) {
+	private @NotNull Map<String, Object> buildJson(int outsideShots, Map<String, Integer> sunkBoatsCount, Map<String, Integer> hitsPerBoat) {
 		// Criar o mapa para o JSON
 		Map<String, Object> response = new LinkedHashMap<>();
 		response.put(Messages.get("json.validShots"), validShots);
@@ -174,7 +173,7 @@ public class Move implements IMove {
 		return sunkBoats;
 	}
 
-	private static @NotNull StringBuilder buildMessage(int validShots, int repeatedShots, Map<String, Integer> sunkBoatsCount, Map<String, Integer> hitsPerBoat, int missedShots, int outsideShots) {
+	private @NotNull StringBuilder buildMessage(Map<String, Integer> sunkBoatsCount, Map<String, Integer> hitsPerBoat, int outsideShots) {
 		// Construção da mensagem de saída
 		StringBuilder output = new StringBuilder();
 
