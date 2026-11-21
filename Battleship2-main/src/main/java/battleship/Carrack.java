@@ -1,7 +1,5 @@
 package battleship;
 
-import java.util.List;
-
 /**
  * The type Carrack represents a ship with a size of 3 units.
  * It is positioned on the game board based on its bearing and initial position.
