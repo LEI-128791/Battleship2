@@ -57,11 +57,11 @@ public class Game implements IGame
 
 	private static void printShips(IFleet fleet, char[][] map) {
 		for (IShip ship : fleet.getShips()) {
-			for (IPosition ship_pos : ship.getPositions())
-				map[ship_pos.getRow()][ship_pos.getColumn()] = SHIP_MARKER;
+			for (IPosition shipPos : ship.getPositions())
+				map[shipPos.getRow()][shipPos.getColumn()] = SHIP_MARKER;
 			if (!ship.stillFloating())
-				for (IPosition adjacent_pos : ship.getAdjacentPositions())
-					map[adjacent_pos.getRow()][adjacent_pos.getColumn()] = SHIP_ADJACENT_MARKER;
+				for (IPosition adjacentPos : ship.getAdjacentPositions())
+					map[adjacentPos.getRow()][adjacentPos.getColumn()] = SHIP_ADJACENT_MARKER;
 		}
 	}
 
