@@ -111,12 +111,12 @@ public class GameTest {
 				List.of(new Position(1, 1), new Position(5, 5), new Position(-1, 5))));
 
 		String full = captureOutput(() ->
-				Game.printBoard(game.getMyFleet(), game.getAlienMoves(), true, true));
+				BoardPrinter.printBoard(game.getMyFleet(), game.getAlienMoves(), true, true));
 		assertTrue(full.contains("*"), "Hit on a ship should be marked with '*'.");
 		assertTrue(full.contains("o"), "Shot in the water should be marked with 'o'.");
 
 		String noShots = captureOutput(() ->
-				Game.printBoard(game.getMyFleet(), game.getAlienMoves(), false, false));
+				BoardPrinter.printBoard(game.getMyFleet(), game.getAlienMoves(), false, false));
 		assertFalse(noShots.contains("*"), "Shots should not be shown when showShots is false.");
 		assertTrue(noShots.contains("#") || noShots.contains("-"), "Ship should be drawn.");
 	}
@@ -254,7 +254,7 @@ public class GameTest {
 	void printBoardFloatingShip() {
 		game.getMyFleet().addShip(new Frigate(Compass.EAST, new Position(5, 5)));
 		String out = captureOutput(() ->
-				Game.printBoard(game.getMyFleet(), game.getAlienMoves(), true, true));
+				BoardPrinter.printBoard(game.getMyFleet(), game.getAlienMoves(), true, true));
 		assertTrue(out.contains("#"), "Floating ship should be drawn.");
 	}
 
@@ -265,7 +265,7 @@ public class GameTest {
 		captureOutput(() -> game.fireShots(
 				List.of(new Position(1, 1), new Position(1, 2), new Position(5, 5))));
 		String out = captureOutput(() ->
-				Game.printBoard(game.getMyFleet(), game.getAlienMoves(), true, false));
+				BoardPrinter.printBoard(game.getMyFleet(), game.getAlienMoves(), true, false));
 		assertTrue(out.contains("o"), "Shot on adjacent tile should be marked as water.");
 	}
 
@@ -330,8 +330,8 @@ public class GameTest {
 		assertThrows(AssertionError.class, () -> game.fireShots(null));
 		assertThrows(AssertionError.class, () -> game.readEnemyFire(null));
 		assertThrows(AssertionError.class, () -> Game.jsonShots(null));
-		assertThrows(AssertionError.class, () -> Game.printBoard(null, game.getAlienMoves(), true, true));
-		assertThrows(AssertionError.class, () -> Game.printBoard(game.getMyFleet(), null, true, true));
+		assertThrows(AssertionError.class, () -> BoardPrinter.printBoard(null, game.getAlienMoves(), true, true));
+		assertThrows(AssertionError.class, () -> BoardPrinter.printBoard(game.getMyFleet(), null, true, true));
 	}
 
 	@Test
