@@ -59,7 +59,8 @@ public class Galleon extends Ship {
 			getPositions().add(new Position(pos.getRow() + i, pos.getColumn()));
 		}
 		for (int j = 2; j < 5; j++) {
-			getPositions().add(new Position(pos.getRow() + 2, pos.getColumn() + j - 3));
+			int column = pos.getColumn() + j - 3;
+			getPositions().add(new Position(pos.getRow() + 2, column));
 		}
 	}
 
@@ -71,7 +72,8 @@ public class Galleon extends Ship {
 	private void fillEast(IPosition pos) {
 		getPositions().add(new Position(pos.getRow(), pos.getColumn()));
 		for (int i = 1; i < 4; i++) {
-			getPositions().add(new Position(pos.getRow() + 1, pos.getColumn() + i - 3));
+			int column = pos.getColumn() + i - 3;
+			getPositions().add(new Position(pos.getRow() + 1, column));
 		}
 		getPositions().add(new Position(pos.getRow() + 2, pos.getColumn()));
 	}
