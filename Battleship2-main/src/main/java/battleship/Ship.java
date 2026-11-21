@@ -431,4 +431,13 @@ public abstract class Ship implements IShip
 	return "[" + category + " " + bearing + " " + pos + "]";
     }
 
+	protected void fillHorizontal(IPosition pos) {
+		for (int c = 0; c < this.getSize(); c++)
+			getPositions().add(new Position(pos.getRow(), pos.getColumn() + c));
+	}
+
+	protected void fillVertical(IPosition pos) {
+		for (int r = 0; r < this.getSize(); r++)
+			getPositions().add(new Position(pos.getRow() + r, pos.getColumn()));
+	}
 }
