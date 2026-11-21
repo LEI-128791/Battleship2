@@ -83,11 +83,7 @@ public class Game implements IGame
 		}
 		System.out.println();
 
-		System.out.print("   +-");
-		for (int col = 0; col < BOARD_SIZE; col++) {
-			System.out.print("--");
-		}
-		System.out.println("+");
+		printSeparator();
 
 		for (int row = 0; row < BOARD_SIZE; row++) {
 			Position pos = new Position(row, 0);
@@ -98,6 +94,11 @@ public class Game implements IGame
 			System.out.println(" |");
 		}
 
+		printSeparator();
+	}
+
+
+	private static void printSeparator() {
 		System.out.print("   +");
 		for (int col = 0; col < BOARD_SIZE; col++)
 			System.out.print("--");
