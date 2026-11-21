@@ -6,12 +6,24 @@ package battleship;
 import java.util.ArrayList;
 import java.util.List;
 import java.text.MessageFormat;
+import java.util.function.Predicate;
 
 /**
  * The type Fleet.
  */
 public class Fleet implements IFleet
 {
+	private List<IShip> filterShips(Predicate<IShip> condition) {
+		List<IShip> filteredShips = new ArrayList<>();
+
+		for (IShip s : ships) {
+			if (condition.test(s)) {
+				filteredShips.add(s);
+			}
+		}
+
+		return filteredShips;
+	}
 
 	private static final String[] SHIP_TYPES = {"galeao",                           // 1 galleon
 			"fragata",                           // 1 frigate
@@ -113,19 +125,12 @@ public class Fleet implements IFleet
      * 
      * @see battleship.IFleet#getShipsLike(java.lang.String)
      */
-    @Override
-    public List<IShip> getShipsLike(String category)
-    {
+	@Override
+	public List<IShip> getShipsLike(String category) {
 		assert category != null;
 
-		List<IShip> shipsLike = new ArrayList<IShip>();
-		for (IShip s : ships)
-			if (s.getCategory().equals(category))
-				shipsLike.add(s);
-
-		return shipsLike;
-    }
-
+		return filterShips(s -> s.getCategory().equals(category));
+	}
 	/**
 	 * Gets floating ships.
 	 *
@@ -136,16 +141,11 @@ public class Fleet implements IFleet
      * 
      * @see battleship.IFleet#getFloatingShips()
      */
-    @Override
-    public List<IShip> getFloatingShips()
-    {
-		List<IShip> floatingShips = new ArrayList<IShip>();
-		for (IShip s : ships)
-			if (s.stillFloating())
-				floatingShips.add(s);
+	@Override
+	public List<IShip> getFloatingShips() {
+		return filterShips(s -> s.stillFloating());
+	}
 
-		return floatingShips;
-    }
 
 	/**
 	 * Gets sunk ships.
@@ -158,14 +158,8 @@ public class Fleet implements IFleet
 	 * @see battleship.IFleet#getSunkShips()
 	 */
 	@Override
-	public List<IShip> getSunkShips()
-	{
-		List<IShip> sunkShips = new ArrayList<IShip>();
-		for (IShip s : ships)
-			if (!s.stillFloating())
-				sunkShips.add(s);
-
-		return sunkShips;
+	public List<IShip> getSunkShips() {
+		return filterShips(s -> !s.stillFloating());
 	}
 
 	/**
