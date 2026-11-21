@@ -39,32 +39,32 @@ public abstract class Ship implements IShip
 	 *
 	 * @param shipKind the ship kind
 	 * @param bearing  the bearing
-	 * @param pos      the pos
+	 * @param position      the position
 	 * @return s ship
 	 */
-	static Ship buildShip(String shipKind, Compass bearing, Position pos)
+	static Ship buildShip(String shipKind, Compass bearing, Position position)
     {
 		assert shipKind != null;
 		assert bearing != null;
-		assert pos != null;
+		assert position != null;
 
         Ship s;
         switch (shipKind)
         {
         case BARCA:
-            s = new Barge(bearing, pos);
+            s = new Barge(bearing, position);
 			break;
         case CARAVELA:
-            s = new Caravel(bearing, pos);
+            s = new Caravel(bearing, position);
 			break;
         case NAU:
-            s = new Carrack(bearing, pos);
+            s = new Carrack(bearing, position);
 			break;
         case FRAGATA:
-            s = new Frigate(bearing, pos);
+            s = new Frigate(bearing, position);
 			break;
         case GALEAO:
-            s = new Galleon(bearing, pos);
+            s = new Galleon(bearing, position);
 			break;
         default:
             s = null;
@@ -92,7 +92,7 @@ public abstract class Ship implements IShip
 	/**
 	 * The size
 	 */
-	private Integer size;
+	private int size;
 
 	/**
 	 * The Positions occupied by the ship.
@@ -104,18 +104,18 @@ public abstract class Ship implements IShip
 	 *
 	 * @param category The category of ships of interest
 	 * @param bearing  The bearing of ships of interest
-	 * @param pos      The position of ships of interest
+	 * @param position      The position of ships of interest
 	 * @param size		The number of positions occupied by the ship
 	 */
-	public Ship(String category, Compass bearing, IPosition pos, int size)
+	public Ship(String category, Compass bearing, IPosition position, int size)
     {
 		this.category = Objects.requireNonNull(category, "Ship's category must not be null");
 		this.bearing = Objects.requireNonNull(bearing, "Ship's bearing must not be null");
-		this.pos = Objects.requireNonNull(pos, "Ship's position must not be null");
+		this.pos = Objects.requireNonNull(position, "Ship's position must not be null");
 	
 		this.category = category;
 		this.bearing = bearing;
-		this.pos = pos;
+		this.pos = position;
 		this.size = size;
 
 		positions = new ArrayList<>();
@@ -205,7 +205,7 @@ public abstract class Ship implements IShip
 	 *
 	 * @return the size
 	 */
-	public Integer getSize()
+	public int getSize()
 	{
 		return size;
 	}
@@ -312,7 +312,7 @@ public abstract class Ship implements IShip
 	/**
 	 * Occupies boolean.
 	 *
-	 * @param pos the pos
+	 * @param position the position
 	 * @return the boolean
 	 */
 	/*
@@ -321,12 +321,12 @@ public abstract class Ship implements IShip
      * @see battleship.IShip#occupies(battleship.IPosition)
      */
     @Override
-    public boolean occupies(IPosition pos)
+    public boolean occupies(IPosition position)
     {
-		assert pos != null;
+		assert position != null;
 
 		for (int i = 0; i < getSize(); i++)
-			if (getPositions().get(i).equals(pos))
+			if (getPositions().get(i).equals(position))
 				return true;
 		return false;
     }
@@ -358,7 +358,7 @@ public abstract class Ship implements IShip
 	/**
 	 * Too close to boolean.
 	 *
-	 * @param pos the pos
+	 * @param position the position
 	 * @return the boolean
 	 */
 	/*
@@ -367,27 +367,26 @@ public abstract class Ship implements IShip
      * @see battleship.IShip#tooCloseTo(battleship.IPosition)
      */
     @Override
-    public boolean tooCloseTo(IPosition pos)
+    public boolean tooCloseTo(IPosition position)
     {
-		assert pos != null;
+		assert position != null;
 
 		for (int i = 0; i < this.getSize(); i++)
-			if (getPositions().get(i).isAdjacentTo(pos))
+			if (getPositions().get(i).isAdjacentTo(position))
 				return true;
 		return false;
     }
 
 	public boolean isInsideBoard()
 	{
-		assert this != null;
-
-		return (getLeftMostPos() >= 0 && getRightMostPos() <= Game.BOARD_SIZE - 1 && getTopMostPos() >= 0
-				&& getBottomMostPos() <= Game.BOARD_SIZE - 1);
+		int lastIndex = Game.BOARD_SIZE - 1;
+		return (getLeftMostPos() >= 0 && getRightMostPos() <= lastIndex && getTopMostPos() >= 0
+				&& getBottomMostPos() <= lastIndex);
 	}
 	/**
 	 * Shoot.
 	 *
-	 * @param pos the pos
+	 * @param position the position
 	 */
 	/*
      * (non-Javadoc)
@@ -395,15 +394,15 @@ public abstract class Ship implements IShip
      * @see battleship.IShip#shoot(battleship.IPosition)
      */
     @Override
-    public void shoot(IPosition pos)
+    public void shoot(IPosition position)
     {
-		assert pos != null;
-		assert pos.isInside();
+		assert position != null;
+		assert position.isInside();
 
-		for (IPosition position : getPositions())
+		for (IPosition shipPosition : getPositions())
 		{
-			if (position.equals(pos))
-				position.shoot();
+			if (shipPosition.equals(position))
+				shipPosition.shoot();
 		}
     }
 

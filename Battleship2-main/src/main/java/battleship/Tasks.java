@@ -22,33 +22,8 @@ public class Tasks {
 	 * The constant GOODBYE_MESSAGE.
 	 */
 	private static final String GOODBYE_MESSAGE = "Bons ventos!";
-
-	/**
-	 * Strings to be used by the user
-	 */
-	private static String AJUDA;
-	private static String GERAFROTA;
-	private static String LEFROTA;
-	private static String DESISTIR;
-	private static String RAJADA;
-	private static String TIROS;
-	private static String MAPA;
-	private static String STATUS;
-	private static String SIMULA;
-	private static String EXPORTAR_PDF;
-
-	private static void loadCommands() {
-		AJUDA = Messages.get("command.help");
-		GERAFROTA = Messages.get("command.generate");
-		LEFROTA = Messages.get("command.readFleet");
-		DESISTIR = Messages.get("command.quit");
-		RAJADA = Messages.get("command.fire");
-		TIROS = Messages.get("command.shots");
-		MAPA = Messages.get("command.map");
-		STATUS = Messages.get("command.status");
-		SIMULA = Messages.get("command.simulate");
-		EXPORTAR_PDF = Messages.get("command.pdf");
-	}
+	private static final String PROMPT = "> ";
+	private static final String PDF_FILE_NAME = "battleship-history.pdf";
 
 	/**
 	 * This task also tests the fighting element of a round of three shots
@@ -60,7 +35,7 @@ public class Tasks {
 		System.out.print("Choose language (pt/en): ");
 		String language = in.next();
 		Messages.setLanguage(language);
-		loadCommands();
+		MenuCommands.load();
 
 		IFleet myFleet = null;
 		IGame game = null;
@@ -68,30 +43,30 @@ public class Tasks {
 
 		menuHelp();
 
-		System.out.print("> ");
+		System.out.print(PROMPT);
 		String command = in.next();
 
-		while (!command.equals(DESISTIR)) {
+		while (!command.equals(MenuCommands.DESISTIR)) {
 
-			if (command.equals(GERAFROTA)) {
+			if (command.equals(MenuCommands.GERAFROTA)) {
 				myFleet = Fleet.createRandom();
 				game = new Game(myFleet);
 				game.printMyBoard(false, true);
 
-			} else if (command.equals(LEFROTA)) {
+			} else if (command.equals(MenuCommands.LEFROTA)) {
 				myFleet = buildFleet(in);
 				game = new Game(myFleet);
 				game.printMyBoard(false, true);
 
-			} else if (command.equals(STATUS)) {
+			} else if (command.equals(MenuCommands.STATUS)) {
 				if (myFleet != null)
 					myFleet.printStatus();
 
-			} else if (command.equals(MAPA)) {
+			} else if (command.equals(MenuCommands.MAPA)) {
 				if (myFleet != null)
 					game.printMyBoard(false, true);
 
-			} else if (command.equals(RAJADA)) {
+			} else if (command.equals(MenuCommands.RAJADA)) {
 				if (game != null && !gameFinished) {
 					game.readEnemyFire(in);
 					myFleet.printStatus();
@@ -105,7 +80,7 @@ public class Tasks {
 					System.out.println(Messages.get("game.finished"));
 				}
 
-			} else if (command.equals(SIMULA)) {
+			} else if (command.equals(MenuCommands.SIMULA)) {
 				if (game != null && !gameFinished) {
 					while (game.getRemainingShips() > 0) {
 						game.randomEnemyFire();
@@ -123,38 +98,40 @@ public class Tasks {
 					System.out.println(Messages.get("game.finished"));
 				}
 
-			} else if (command.equals(TIROS)) {
+			} else if (command.equals(MenuCommands.TIROS)) {
 				if (game != null)
 					game.printMyBoard(true, true);
 
-			} else if (command.equals(AJUDA)) {
+			} else if (command.equals(MenuCommands.AJUDA)) {
 				menuHelp();
 
-			} else if (command.equals(EXPORTAR_PDF)) {
+			} else if (command.equals(MenuCommands.EXPORTAR_PDF)) {
 				if (game == null) {
 					System.out.println(Messages.get("game.createFleet"));
 				} else {
-					Path outputPath = Path.of("battleship-history.pdf");
-					try {
-						Path actualPath = PdfReportExporter.export(
-								game.getAlienMoves(), outputPath);
-						System.out.println(Messages.get("pdf.export.success")
-								+ " " + actualPath.toAbsolutePath());
-					} catch (IOException e) {
-						LOGGER.error(Messages.get("pdf.export.logError"), e);
-						System.out.println(Messages.get("pdf.export.error")
-								+ " " + e.getMessage());
-					}
+					exportarHistorico(game, Path.of(PDF_FILE_NAME));
 				}
 
 			} else {
 				System.out.println(Messages.get("game.unknownCommand"));
 			}
 
-			System.out.print("> ");
+			System.out.print(PROMPT);
 			command = in.next();
 		}
 		System.out.println(Messages.get("game.goodbye"));
+	}
+
+	private static void exportarHistorico(IGame game, Path outputPath) {
+		try {
+            System.out.println(Messages.get("pdf.export.success")
+					+ " " + PdfReportExporter.export(
+                            game.getAlienMoves(), outputPath).toAbsolutePath());
+		} catch (IOException e) {
+			LOGGER.error(Messages.get("pdf.export.logError"), e);
+			System.out.println(Messages.get("pdf.export.error")
+					+ " " + e.getMessage());
+		}
 	}
 
 	/**
@@ -167,23 +144,23 @@ public class Tasks {
 				+ " =======================");
 
 		System.out.println(Messages.get("menu.intro"));
-		System.out.println("- " + GERAFROTA + ": "
+		System.out.println("- " + MenuCommands.GERAFROTA + ": "
 				+ Messages.get("menu.generate"));
-		System.out.println("- " + LEFROTA + ": "
+		System.out.println("- " + MenuCommands.LEFROTA + ": "
 				+ Messages.get("menu.readFleet"));
-		System.out.println("- " + STATUS + ": "
+		System.out.println("- " + MenuCommands.STATUS + ": "
 				+ Messages.get("menu.status"));
-		System.out.println("- " + MAPA + ": "
+		System.out.println("- " + MenuCommands.MAPA + ": "
 				+ Messages.get("menu.map"));
-		System.out.println("- " + RAJADA + ": "
+		System.out.println("- " + MenuCommands.RAJADA + ": "
 				+ Messages.get("menu.fire"));
-		System.out.println("- " + SIMULA + ": "
+		System.out.println("- " + MenuCommands.SIMULA + ": "
 				+ Messages.get("menu.simulate"));
-		System.out.println("- " + TIROS + ": "
+		System.out.println("- " + MenuCommands.TIROS + ": "
 				+ Messages.get("menu.shots"));
-		System.out.println("- " + DESISTIR + ": "
+		System.out.println("- " + MenuCommands.DESISTIR + ": "
 				+ Messages.get("menu.quit"));
-		System.out.println("- " + EXPORTAR_PDF + ": "
+		System.out.println("- " + MenuCommands.EXPORTAR_PDF + ": "
 				+ Messages.get("menu.pdf"));
 
 		System.out.println(
@@ -280,10 +257,6 @@ public class Tasks {
 		if (input.matches("[A-Z]\\d+")) {
 			char column = input.charAt(0); // Extrair a coluna
 			int row = Integer.parseInt(input.substring(1)); // Extrair a linha
-			return new Position(column, row);
-		} else if (part2 != null && part1.matches("[A-Z]") && part2.matches("\\d+")) {
-			char column = part1.charAt(0); // Extrair a coluna
-			int row = Integer.parseInt(part2); // Extrair a linha
 			return new Position(column, row);
 		} else {
 			throw new IllegalArgumentException(
