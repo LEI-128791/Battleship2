@@ -3,7 +3,6 @@ package battleship;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import org.jetbrains.annotations.NotNull;
 
 import java.text.MessageFormat;
 
@@ -169,10 +168,10 @@ public class Game implements IGame
 	private final IFleet alienFleet;
 	private final List<IMove> myMoves;
 
-	private Integer countInvalidShots;
-	private Integer countRepeatedShots;
-	private Integer countHits;
-	private Integer countSinks;
+	private int countInvalidShots;
+	private int countRepeatedShots;
+	private int countHits;
+	private int countSinks;
 	private int moveNumber;
 
 	//------------------------------------------------------------------
