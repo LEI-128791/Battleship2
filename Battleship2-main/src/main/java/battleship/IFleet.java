@@ -13,7 +13,7 @@ public interface IFleet
 	/**
 	 * The constant FLEET_SIZE.
 	 */
-	Integer FLEET_SIZE = 11;
+	int FLEET_SIZE = 11;
 
 	/**
 	 * Gets ships.
