@@ -148,8 +148,8 @@ public class FleetTest {
 	}
 
 	@Test
-	void testColisionRisk() throws Exception {
-		Method method = Fleet.class.getDeclaredMethod("colisionRisk", IShip.class);
+	void testCollisionRisk() throws Exception {
+		Method method = Fleet.class.getDeclaredMethod("collisionRisk", IShip.class);
 		method.setAccessible(true);
 
 		IShip first = new Barge(Compass.NORTH, new Position(1, 1));
@@ -236,9 +236,9 @@ public class FleetTest {
 	}
 
 	@Test
-	void testColisionRiskRejectsNull() throws Exception {
+	void testCollisionRiskRejectsNull() throws Exception {
 		java.lang.reflect.Method method =
-				Fleet.class.getDeclaredMethod("colisionRisk", IShip.class);
+				Fleet.class.getDeclaredMethod("collisionRisk", IShip.class);
 		method.setAccessible(true);
 
 		java.lang.reflect.InvocationTargetException exception = assertThrows(
