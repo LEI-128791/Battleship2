@@ -221,13 +221,14 @@ public final class PdfReportExporter {
             return "Agua";
         }
 
+        String category = result.ship().getCategory();
         if (result.sunk()) {
             return "Navio afundado ("
-                    + result.ship().getCategory() + ")";
+                    + category + ")";
         }
-
+        
         return "Navio atingido ("
-                + result.ship().getCategory() + ")";
+                + category + ")";
     }
 
     private static void writeLine(
