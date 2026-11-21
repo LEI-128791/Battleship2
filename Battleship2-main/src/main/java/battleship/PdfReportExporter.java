@@ -66,9 +66,7 @@ public final class PdfReportExporter {
                         ? describeResult(results.get(i))
                         : "Resultado nao disponivel";
 
-                String coordinate = ""
-                        + position.getClassicRow()
-                        + position.getClassicColumn();
+                String coordinate = coordinateOf(position);
 
                 shots.add(new ShotReport(coordinate, outcome));
             }
@@ -77,6 +75,12 @@ public final class PdfReportExporter {
         }
 
         return exportHistory(reports, outputPath);
+    }
+
+    private static @NotNull String coordinateOf(IPosition position) {
+        return ""
+                + position.getClassicRow()
+                + position.getClassicColumn();
     }
 
     private static Path reserveAvailablePath(Path requestedPath)
